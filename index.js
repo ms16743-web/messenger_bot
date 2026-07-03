@@ -1,3 +1,4 @@
+const { askAI } = require("./services/ai");
 const fs = require("fs");
 require("dotenv").config();
 const express = require("express");
@@ -65,7 +66,10 @@ app.post("/webhook", async (req, res) => {
       userState[senderId] = { step: "start" };
     }
 
-    const reply = generateReply(messageText, senderId);
+    const reply = await askAI(
+  "You are a helpful assistant.",
+  messageText
+);
     await sendMessage(senderId, reply);
   }
 
