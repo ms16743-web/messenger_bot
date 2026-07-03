@@ -170,19 +170,40 @@ How old are you?`;
 function findBestProgram(age, interest) {
   const programs = academy.programs || [];
 
-  if (interest === "AI" && age >= 10 && age <= 18) {
-    return programs.find(p => p.name.includes("Juniors"));
+  const i = (interest || "").toLowerCase();
+  const a = Number(age);
+
+  if (isNaN(a)) {
+    return programs.find(p => p.name.toLowerCase().includes("adults"));
   }
 
-  if (interest === "AI" && age > 18) {
-    return programs.find(p => p.name.includes("Adults"));
+  // 🔥 Automation / Company (highest priority)
+  if (i.includes("automation") || i.includes("company")) {
+    return programs.find(p => p.name.toLowerCase().includes("company"))
+      || programs.find(p => p.name.toLowerCase().includes("adults"));
   }
 
-  if (interest === "Automation") {
-    return programs.find(p => p.name.includes("Company")) || programs[1];
+  // 🤖 AI logic
+  if (i.includes("ai")) {
+    if (a <= 18) {
+      return programs.find(p => p.name.toLowerCase().includes("juniors"));
+    }
+    return programs.find(p => p.name.toLowerCase().includes("adults"));
   }
 
-  return programs[0];
+  // 💻 Programming logic (IMPORTANT FIX YOU WERE MISSING)
+  if (i.includes("programming")) {
+    if (a <= 18) {
+      return programs.find(p => p.name.toLowerCase().includes("juniors"));
+    }
+    return programs.find(p => p.name.toLowerCase().includes("adults"));
+  }
+
+  // 🛡️ SAFE fallback (NEVER index 0)
+  return programs.find(p => p.name.toLowerCase().includes("adults"))
+    || programs.find(p => p.name.toLowerCase().includes("company"))
+    || programs[1]
+    || programs[0];
 }
 
 // =====================
