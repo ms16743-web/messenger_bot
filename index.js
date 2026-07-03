@@ -34,43 +34,36 @@ app.get("/", (req, res) => {
 // =====================
 // WEBHOOK VERIFY
 // =====================
-app.get("/webhook", (req, res) => {
-  const mode = req.query["hub.mode"];
-  const token = req.query["hub.verify_token"];
-  const challenge = req.query["hub.challenge"];
-
-  if (mode === "subscribe" && token === VERIFY_TOKEN) {
-    return res.status(200).send(challenge);
-  }
-
-  return res.sendStatus(403);
-});
-
-// =====================
-// RECEIVE MESSAGES
-// =====================
 app.post("/webhook", async (req, res) => {
   console.log("🔥 WEBHOOK RECEIVED");
 
-  const entry = req.body.entry?.[0];
-  const event = entry?.messaging?.[0];
+  try {
+    const entry = req.body.entry?.[0];
+    const event = entry?.messaging?.[0];
 
-  const senderId = event?.sender?.id;
-  const messageText = event?.message?.text;
+    const senderId = event?.sender?.id;
+    const messageText = event?.message?.text;
 
-  if (senderId && messageText) {
+    if (!senderId || !messageText) {
+      return res.sendStatus(200);
+    }
+
     console.log("User:", messageText);
 
-    // init state
+    // init state (optional now, but keep for future RAG)
     if (!userState[senderId]) {
       userState[senderId] = { step: "start" };
     }
 
     const reply = await askAI(
-  "You are a helpful assistant.",
-  messageText
-);
+      "You are an admissions assistant for AI Academy Asia. Be helpful and clear.",
+      messageText
+    );
+
     await sendMessage(senderId, reply);
+
+  } catch (err) {
+    console.log("❌ WEBHOOK ERROR:", err.message);
   }
 
   res.sendStatus(200);
@@ -82,11 +75,15 @@ app.post("/webhook", async (req, res) => {
 function generateReply(text, userId) {
   const msg = text.toLowerCase();
 
-  if (!userState[userId]) {
+   if (!userState[userId]) {
     userState[userId] = { step: "start" };
   }
 
   const state = userState[userId];
+
+  if (!state.step) {
+    state.step = "start";
+  }
 
   // 🧠 GLOBAL OVERRIDE (IMPORTANT FIX)
   if (msg.includes("hi") || msg.includes("hello")) {
