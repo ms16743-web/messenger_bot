@@ -1,3 +1,4 @@
+const fs = require("fs");
 require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
@@ -7,7 +8,15 @@ app.use(express.json());
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
+let academy = {};
 
+try {
+  academy = JSON.parse(
+    fs.readFileSync("./knowledge/academy.json", "utf8")
+  );
+} catch (err) {
+  console.log("❌ Failed to load academy.json:", err.message);
+}
 // health check
 app.get("/", (req, res) => {
   res.send("Bot server is running!");
@@ -43,12 +52,29 @@ app.post("/webhook", async (req, res) => {
     console.log("User:", messageText);
 
     // simple auto-reply
-    await sendMessage(senderId, "Got it: " + messageText);
+   const reply = generateReply(messageText);
+await sendMessage(senderId, reply);
   }
 
   res.sendStatus(200);
 });
+function generateReply(text) {
+  const msg = text.toLowerCase();
 
+  if (msg.includes("ai")) {
+    return `Nice! AI Academy Asia offers structured AI learning programs for different levels. Do you want Junior, Adult, or Company training?`;
+  }
+
+  if (msg.includes("price") || msg.includes("cost")) {
+    return `I can help with that 👍 Pricing depends on the program. May I know your age or goal so I can guide you better?`;
+  }
+
+  if (msg.includes("hello") || msg.includes("hi")) {
+    return `Hi 👋 Welcome to AI Academy Asia! What would you like to learn today? AI, programming, or automation?`;
+  }
+
+  return `Thanks for your message 👍 Can you tell me a bit more about what you want to learn so I can guide you properly?`;
+}
 // send message function
 async function sendMessage(psid, text) {
   try {

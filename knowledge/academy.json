@@ -1,0 +1,36 @@
+{
+  "name": "AI Academy Asia",
+  "mission": "To help students, adults, and companies learn practical AI skills through project-based learning.",
+  "languages": ["Mongolian", "English"],
+  "location": "Mongolia",
+  "website": "https://ai-academy.asia",
+  "contact": {
+    "phone": "+976 75051055",
+    "email": "info@ai-academy.asia"
+  },
+  "programs": [
+    {
+      "name": "Juniors Program",
+      "age_range": "10-18",
+      "focus": "AI basics, creativity, coding foundations"
+    },
+    {
+      "name": "Adults Program",
+      "age_range": "18+",
+      "focus": "AI tools, automation, real-world AI projects"
+    },
+    {
+      "name": "Company Training",
+      "age_range": "Business",
+      "focus": "AI integration for workflows and productivity"
+    }
+  ],
+  "learning_style": [
+    "Project-based learning",
+    "Real-world AI projects",
+    "Hands-on practice"
+  ],
+  "certificates": {
+    "cpd_accredited": true
+  }
+}
