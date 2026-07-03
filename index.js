@@ -84,11 +84,21 @@ function generateReply(text, userId) {
 
   const state = userState[userId];
 
-  // STEP 1: greeting
+  // 🧠 GLOBAL OVERRIDE (IMPORTANT FIX)
+  if (msg.includes("hi") || msg.includes("hello")) {
+    state.step = "asked_interest";
+    return `Hi 👋 Welcome to AI Academy Asia!
+
+What are you interested in?
+👉 AI
+👉 Programming
+👉 Automation`;
+  }
+
+  // STEP 1
   if (state.step === "start") {
     state.step = "asked_interest";
-
-    return `Hi 👋 Welcome to ${academy.name || "AI Academy Asia"}!
+    return `Hi 👋 Welcome to AI Academy Asia!
 
 What are you interested in?
 👉 AI
@@ -98,34 +108,35 @@ What are you interested in?
 
   // STEP 2: interest
   if (state.step === "asked_interest") {
-    if (msg.includes("ai")) {
-      state.step = "asked_age";
-      state.interest = "AI";
-
-      return `Nice 🤖 AI is a great choice!
-
-May I ask your age so I can suggest the right program?`;
-    }
 
     if (msg.includes("programming")) {
+      state.interest = "programming";
       state.step = "asked_age";
-      state.interest = "Programming";
 
       return `Great 💻 Programming is powerful!
 
 How old are you?`;
     }
 
-    if (msg.includes("automation")) {
+    if (msg.includes("ai")) {
+      state.interest = "ai";
       state.step = "asked_age";
-      state.interest = "Automation";
 
-      return `Awesome ⚙️ Automation is very useful!
+      return `Nice 🤖 AI is a great choice!
 
 How old are you?`;
     }
 
-    return `Please choose one:
+    if (msg.includes("automation")) {
+      state.interest = "automation";
+      state.step = "asked_age";
+
+      return `Awesome ⚙️ Automation is useful!
+
+How old are you?`;
+    }
+
+    return `Please choose:
 👉 AI
 👉 Programming
 👉 Automation`;
@@ -136,7 +147,7 @@ How old are you?`;
     const age = parseInt(msg);
 
     if (isNaN(age)) {
-      return `Please enter your age as a number 🙂`;
+      return `Please enter a valid age number 🙂`;
     }
 
     state.age = age;
@@ -144,19 +155,15 @@ How old are you?`;
 
     const best = findBestProgram(age, state.interest);
 
-    return `Perfect 👍 Based on your age (${age}) and interest in ${state.interest}, I recommend:
+    return `Perfect 👍 I recommend:
 
-👉 ${best?.name || "Our Program"}
-📌 Age: ${best?.age_range || "N/A"}
-🧠 Focus: ${best?.focus || "Practical AI learning"}
-
-Would you like more details about this program?`;
+👉 ${best.name}
+📌 Age: ${best.age_range}
+🧠 Focus: ${best.focus}`;
   }
 
-  // fallback
-  return `Let me help you step by step 👍 What are you interested in?`;
+  return `Let me help you step by step 👍`;
 }
-
 // =====================
 // PROGRAM MATCHER
 // =====================
