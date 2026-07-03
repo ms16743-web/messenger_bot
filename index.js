@@ -8,6 +8,11 @@ app.use(express.json());
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
+
+// 🧠 memory (per user)
+const userState = {};
+
+// 📦 load academy knowledge
 let academy = {};
 
 try {
@@ -17,18 +22,21 @@ try {
 } catch (err) {
   console.log("❌ Failed to load academy.json:", err.message);
 }
-// health check
+
+// =====================
+// HEALTH CHECK
+// =====================
 app.get("/", (req, res) => {
   res.send("Bot server is running!");
 });
 
-// webhook verify (Meta)
+// =====================
+// WEBHOOK VERIFY
+// =====================
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
-
-  console.log("VERIFY HIT:", req.query);
 
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
     return res.status(200).send(challenge);
@@ -37,10 +45,11 @@ app.get("/webhook", (req, res) => {
   return res.sendStatus(403);
 });
 
-// receive messages (THIS WAS MISSING BEFORE)
+// =====================
+// RECEIVE MESSAGES
+// =====================
 app.post("/webhook", async (req, res) => {
   console.log("🔥 WEBHOOK RECEIVED");
-  console.log(JSON.stringify(req.body, null, 2));
 
   const entry = req.body.entry?.[0];
   const event = entry?.messaging?.[0];
@@ -51,38 +60,134 @@ app.post("/webhook", async (req, res) => {
   if (senderId && messageText) {
     console.log("User:", messageText);
 
-    // simple auto-reply
-   const reply = generateReply(messageText);
-await sendMessage(senderId, reply);
+    // init state
+    if (!userState[senderId]) {
+      userState[senderId] = { step: "start" };
+    }
+
+    const reply = generateReply(messageText, senderId);
+    await sendMessage(senderId, reply);
   }
 
   res.sendStatus(200);
 });
-function generateReply(text) {
+
+// =====================
+// MAIN BRAIN
+// =====================
+function generateReply(text, userId) {
   const msg = text.toLowerCase();
 
-  if (msg.includes("ai")) {
-    return `Nice! AI Academy Asia offers structured AI learning programs for different levels. Do you want Junior, Adult, or Company training?`;
+  if (!userState[userId]) {
+    userState[userId] = { step: "start" };
   }
 
-  if (msg.includes("price") || msg.includes("cost")) {
-    return `I can help with that 👍 Pricing depends on the program. May I know your age or goal so I can guide you better?`;
+  const state = userState[userId];
+
+  // STEP 1: greeting
+  if (state.step === "start") {
+    state.step = "asked_interest";
+
+    return `Hi 👋 Welcome to ${academy.name || "AI Academy Asia"}!
+
+What are you interested in?
+👉 AI
+👉 Programming
+👉 Automation`;
   }
 
-  if (msg.includes("hello") || msg.includes("hi")) {
-    return `Hi 👋 Welcome to AI Academy Asia! What would you like to learn today? AI, programming, or automation?`;
+  // STEP 2: interest
+  if (state.step === "asked_interest") {
+    if (msg.includes("ai")) {
+      state.step = "asked_age";
+      state.interest = "AI";
+
+      return `Nice 🤖 AI is a great choice!
+
+May I ask your age so I can suggest the right program?`;
+    }
+
+    if (msg.includes("programming")) {
+      state.step = "asked_age";
+      state.interest = "Programming";
+
+      return `Great 💻 Programming is powerful!
+
+How old are you?`;
+    }
+
+    if (msg.includes("automation")) {
+      state.step = "asked_age";
+      state.interest = "Automation";
+
+      return `Awesome ⚙️ Automation is very useful!
+
+How old are you?`;
+    }
+
+    return `Please choose one:
+👉 AI
+👉 Programming
+👉 Automation`;
   }
 
-  return `Thanks for your message 👍 Can you tell me a bit more about what you want to learn so I can guide you properly?`;
+  // STEP 3: age
+  if (state.step === "asked_age") {
+    const age = parseInt(msg);
+
+    if (isNaN(age)) {
+      return `Please enter your age as a number 🙂`;
+    }
+
+    state.age = age;
+    state.step = "recommend";
+
+    const best = findBestProgram(age, state.interest);
+
+    return `Perfect 👍 Based on your age (${age}) and interest in ${state.interest}, I recommend:
+
+👉 ${best?.name || "Our Program"}
+📌 Age: ${best?.age_range || "N/A"}
+🧠 Focus: ${best?.focus || "Practical AI learning"}
+
+Would you like more details about this program?`;
+  }
+
+  // fallback
+  return `Let me help you step by step 👍 What are you interested in?`;
 }
-// send message function
+
+// =====================
+// PROGRAM MATCHER
+// =====================
+function findBestProgram(age, interest) {
+  const programs = academy.programs || [];
+
+  if (interest === "AI" && age >= 10 && age <= 18) {
+    return programs.find(p => p.name.includes("Juniors"));
+  }
+
+  if (interest === "AI" && age > 18) {
+    return programs.find(p => p.name.includes("Adults"));
+  }
+
+  if (interest === "Automation") {
+    return programs.find(p => p.name.includes("Company")) || programs[1];
+  }
+
+  return programs[0];
+}
+
+// =====================
+// SEND MESSAGE
+// =====================
 async function sendMessage(psid, text) {
   try {
     await axios.post(
       `https://graph.facebook.com/v19.0/me/messages`,
       {
         recipient: { id: psid },
-        message: { text: text }
+        message: { text }
       },
       {
         params: {
@@ -97,6 +202,7 @@ async function sendMessage(psid, text) {
   }
 }
 
+// =====================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
