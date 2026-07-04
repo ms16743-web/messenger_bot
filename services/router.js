@@ -5,7 +5,7 @@ const { getMemory, updateMemory } = require("./memory");
 
 const greetingHandler = require("../intents/greeting");
 const pricingHandler = require("../intents/pricing");
-const { askAI } = require("./ai");
+const { askAI } = require("./groq");
 
 async function router(userId, text) {
   const memory = updateMemory(userId, text);
