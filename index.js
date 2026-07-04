@@ -1,4 +1,4 @@
-const { askAI } = require("./services/ai");
+const { router } = require("./services/router");
 const fs = require("fs");
 require("dotenv").config();
 const express = require("express");
@@ -55,10 +55,7 @@ app.post("/webhook", async (req, res) => {
       userState[senderId] = { step: "start" };
     }
 
-    const reply = await askAI(
-      "You are an admissions assistant for AI Academy Asia. Be helpful and clear.",
-      messageText
-    );
+   const reply = await router(senderId, messageText);
 
     await sendMessage(senderId, reply);
 
