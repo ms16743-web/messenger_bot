@@ -13,6 +13,7 @@ async function router(userId, text) {
   const knowledge = getKnowledge();
 
 const intent = await detectIntent(text);
+console.log("Detected intent:", intent);
   memory.lastIntent = intent;
 
   if (intent === "greeting") {
