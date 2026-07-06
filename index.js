@@ -9,12 +9,10 @@ app.use(express.json());
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 
-// health check
 app.get("/", (req, res) => {
   res.send("Bot server is running!");
 });
 
-// webhook verify
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -29,7 +27,6 @@ app.get("/webhook", (req, res) => {
   return res.sendStatus(403);
 });
 
-// receive messages
 app.post("/webhook", async (req, res) => {
   console.log("🔥 WEBHOOK RECEIVED");
 
@@ -60,7 +57,6 @@ app.post("/webhook", async (req, res) => {
   res.sendStatus(200);
 });
 
-// send message
 async function sendMessage(psid, text) {
   try {
     await axios.post(

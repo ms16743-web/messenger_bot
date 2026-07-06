@@ -1,9 +1,6 @@
-// services/router.js
-
 const { detectIntent } = require("./intent");
 const { updateMemory } = require("./memory");
 const { getKnowledge } = require("./knowledge");
-const { loadPrompt } = require("./prompt");
 
 const greetingHandler = require("../intents/greeting");
 const pricingHandler = require("../intents/pricing");
@@ -14,7 +11,6 @@ const aiHandler = require("../intents/ai");
 async function router(userId, text) {
   const memory = updateMemory(userId, text);
   const knowledge = getKnowledge();
-  const prompt = loadPrompt();
 
   const intent = detectIntent(text);
   memory.lastIntent = intent;
@@ -35,9 +31,7 @@ async function router(userId, text) {
     return locationHandler(memory, knowledge);
   }
 
-  // AI fallback
-  return await aiHandler(text, memory, knowledge, prompt);
+  return await aiHandler(text, memory, knowledge);
 }
 
-module.exports = { router };
 module.exports = { router };

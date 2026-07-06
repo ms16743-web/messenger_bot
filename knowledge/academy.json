@@ -75,24 +75,6 @@
     "cpd_accredited": true
   },
 
-  "faq": [
-    {
-      "question": "Do students need prior AI or programming knowledge?",
-      "answer": "Many programs are designed for beginners and teach AI or programming fundamentals from scratch."
-    },
-    {
-      "question": "Do students receive a certificate?",
-      "answer": "Students can receive a CPD accredited certificate upon successful completion."
-    },
-    {
-      "question": "Are there online classes?",
-      "answer": "Some programs are online, such as the Real Projects With AI program. Other programs may be in-person."
-    },
-    {
-      "question": "Who are the programs for?",
-      "answer": "AI Academy Asia offers programs for kids/juniors, adults, and companies."
-    }
-  ],
 
   "currency_note": "Some program prices are listed in USD at the day's exchange rate; some are listed in MNT.",
   "contact_for_latest_price": "+976 75051055"

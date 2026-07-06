@@ -24,6 +24,16 @@ function detectIntent(text) {
   ) {
     return "pricing";
   }
+  if (
+    msg.includes("location") ||
+    msg.includes("Address") ||
+    msg.includes("байршил") ||
+    msg.includes("Хаан бэ") ||
+    msg.includes("Хаяг") ||
+    msg.includes("Location")
+  ) {
+    return "location";
+  }
 
   return "ai";
 }
