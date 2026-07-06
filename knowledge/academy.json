@@ -4,33 +4,96 @@
   "languages": ["Mongolian", "English"],
   "location": "Mongolia",
   "website": "https://ai-academy.asia",
+
   "contact": {
     "phone": "+976 75051055",
     "email": "info@ai-academy.asia"
   },
+
   "programs": [
     {
-      "name": "Juniors Program",
+      "id": "junior_ai_engineer",
+      "name": "Become a Junior AI Engineer",
+      "category": "Juniors Program",
       "age_range": "10-18",
-      "focus": "AI basics, creativity, coding foundations"
+      "focus": "AI basics, creativity, coding foundations",
+      "price": "$2,000",
+      "price_note": "At the day's exchange rate",
+      "duration": "14 weeks",
+      "schedule": "Mon, Wed, Fri",
+      "time": "17:00-18:30",
+      "format": "In-person"
     },
     {
-      "name": "Adults Program",
+      "id": "ai_engineer_adults",
+      "name": "Become a Globally Competitive AI Engineer",
+      "category": "Adults Program",
       "age_range": "18+",
-      "focus": "AI tools, automation, real-world AI projects"
+      "focus": "AI tools, automation, real-world AI projects",
+      "price": "$5,000",
+      "price_note": "At the day's exchange rate",
+      "duration": "7 months",
+      "schedule": "Tue, Thu, Sat",
+      "time": "Tue/Thu 18:30-20:00, Sat 10:00-13:30",
+      "format": "In-person"
     },
     {
-      "name": "Company Training",
-      "age_range": "Business",
-      "focus": "AI integration for workflows and productivity"
+      "id": "real_projects_with_ai",
+      "name": "Turn Your Ideas Into Real Projects With AI",
+      "category": "Adults / Project Program",
+      "age_range": "18+",
+      "focus": "Building real projects with AI tools",
+      "price": "999,000₮",
+      "price_note": "One-time payment",
+      "duration": "5 weeks",
+      "schedule": "Mon, Wed, Fri",
+      "time": "07:30-09:00",
+      "format": "Online"
+    },
+    {
+      "id": "top_universities_with_ai",
+      "name": "Prepare for Top Universities With AI",
+      "category": "University Preparation",
+      "age_range": "High school students",
+      "focus": "Using AI to prepare for top university applications",
+      "price": "$5,000",
+      "price_note": "At the day's exchange rate",
+      "duration": "4 months",
+      "schedule": "3x/week",
+      "time": "Outside school hours",
+      "format": "In-person"
     }
   ],
+
   "learning_style": [
     "Project-based learning",
     "Real-world AI projects",
     "Hands-on practice"
   ],
+
   "certificates": {
     "cpd_accredited": true
-  }
+  },
+
+  "faq": [
+    {
+      "question": "Do students need prior AI or programming knowledge?",
+      "answer": "Many programs are designed for beginners and teach AI or programming fundamentals from scratch."
+    },
+    {
+      "question": "Do students receive a certificate?",
+      "answer": "Students can receive a CPD accredited certificate upon successful completion."
+    },
+    {
+      "question": "Are there online classes?",
+      "answer": "Some programs are online, such as the Real Projects With AI program. Other programs may be in-person."
+    },
+    {
+      "question": "Who are the programs for?",
+      "answer": "AI Academy Asia offers programs for kids/juniors, adults, and companies."
+    }
+  ],
+
+  "currency_note": "Some program prices are listed in USD at the day's exchange rate; some are listed in MNT.",
+  "contact_for_latest_price": "+976 75051055"
 }
