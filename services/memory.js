@@ -38,7 +38,8 @@ const monglishWords = [
   "hayag", "haana", "bdg", "baidag",
   "burtguuleh", "herhen", "yaaj",
   "huvaari", "tsag", "udur",
-  "sertifikat", "certificate", "olgoj", "ogdog"
+  "sertifikat", "certificate", "olgoj", "ogdog", "avii", "awii", "avya", "awya", "avah", "avmaar",
+"medeelel", "medeelliin", "delgerengui"
 ];
 
 const hasCyrillic = /[а-яөүА-ЯӨҮ]/.test(text);
