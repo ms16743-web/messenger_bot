@@ -12,8 +12,18 @@ async function router(userId, text) {
   const memory = updateMemory(userId, text);
   const knowledge = getKnowledge();
 
-const intent = await detectIntent(text);
-console.log("Detected intent:", intent);
+  const previousIntent = memory.lastIntent;
+  const intent = await detectIntent(text);
+
+  console.log("Detected intent:", intent);
+  console.log("Previous intent:", previousIntent);
+
+  if (previousIntent === "pricing") {
+    const pricingReply = pricingHandler(text, memory, knowledge);
+    memory.lastIntent = "pricing";
+    return pricingReply;
+  }
+
   memory.lastIntent = intent;
 
   if (intent === "greeting") {
@@ -21,7 +31,7 @@ console.log("Detected intent:", intent);
   }
 
   if (intent === "pricing") {
-    return pricingHandler(memory, knowledge);
+    return pricingHandler(text, memory, knowledge);
   }
 
   if (intent === "programs") {

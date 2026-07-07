@@ -1,24 +1,12 @@
-// intents/location.js
-
 function locationHandler(memory, knowledge) {
-  const location = knowledge.location || {};
-  const contacts = knowledge.contacts || {};
+  const lang = memory.language === "mn" ? "mn" : "en";
+  const location = knowledge.location?.[lang] || "ITC Tower, 11th floor";
 
-  if (memory.language === "mn") {
-    return `AI Academy Asia Монголд байрладаг.
-
-Одоогоор яг дэлгэрэнгүй хаягийг knowledge base-д бүрэн оруулаагүй байна.
-
-Илүү тодорхой хаяг авах бол:
-📞 ${contacts.phone || location.phone || "+976 75051055"}`;
+  if (lang === "mn") {
+    return `${location}. Дэлгэрэнгүй мэдээлэл авах бол ${knowledge.contact.phone} дугаараар холбогдоорой.`;
   }
 
-  return `AI Academy Asia is located in Mongolia.
-
-The exact classroom address is not fully added to the knowledge base yet.
-
-For the exact location, please contact:
-📞 ${contacts.phone || location.phone || "+976 75051055"}`;
+  return `${location}. For more details, please contact ${knowledge.contact.phone}.`;
 }
 
 module.exports = locationHandler;

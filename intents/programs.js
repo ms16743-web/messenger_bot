@@ -1,21 +1,32 @@
-// intents/programs.js
-
 function programsHandler(memory, knowledge) {
-  const academyPrograms = knowledge.academy?.programs || [];
+  const lang = memory.language === "mn" ? "mn" : "en";
+  const programs = knowledge.programs || [];
 
-  if (memory.language === "mn") {
-    return `AI Academy Asia дараах үндсэн хөтөлбөрүүдтэй:
+  if (lang === "mn") {
+    return `AI Academy Asia дараах сургалтуудыг санал болгож байна:
 
-${academyPrograms.map(p => `• ${p.name} — ${p.age_range}: ${p.focus}`).join("\n")}
+${programs
+  .map(
+    p => `• ${p.name.mn}
+  Нас: ${p.age_range.mn}
+  ${p.description.mn}`
+  )
+  .join("\n\n")}
 
-Та өөртөө, хүүхэддээ, эсвэл байгууллагадаа сургалт хайж байна уу?`;
+Та аль сургалтын талаар илүү дэлгэрэнгүй мэдээлэл авахыг хүсэж байна вэ?`;
   }
 
-  return `AI Academy Asia offers these main programs:
+  return `AI Academy Asia offers the following programs:
 
-${academyPrograms.map(p => `• ${p.name} — ${p.age_range}: ${p.focus}`).join("\n")}
+${programs
+  .map(
+    p => `• ${p.name.en}
+  Age: ${p.age_range.en}
+  ${p.description.en}`
+  )
+  .join("\n\n")}
 
-Are you looking for a course for yourself, your child, or your company?`;
+Which program would you like to learn more about?`;
 }
 
 module.exports = programsHandler;

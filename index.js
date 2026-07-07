@@ -1,7 +1,22 @@
-const { router } = require("./services/router");
-require("dotenv").config();
-const express = require("express");
-const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
+
+function getKnowledge() {
+  try {
+    const filePath = path.join(__dirname, "..", "knowledge", "academy.json");
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch (err) {
+    console.log("❌ Failed to load academy.json:", err.message);
+    return {
+      programs: [],
+      contact: {
+        phone: "+976 75051055"
+      }
+    };
+  }
+}
+
+module.exports = { getKnowledge };
 
 const app = express();
 app.use(express.json());

@@ -1,81 +1,273 @@
 {
   "name": "AI Academy Asia",
-  "mission": "To help students, adults, and companies learn practical AI skills through project-based learning.",
+  "mission": {
+    "en": "To help students, adults, and companies learn practical AI skills through project-based learning.",
+    "mn": "Төсөлд суурилсан сургалтаар дамжуулан сурагчид, насанд хүрэгчид болон байгууллагуудад хиймэл оюуны бодит ур чадварыг эзэмшүүлэх."
+  },
   "languages": ["Mongolian", "English"],
-  "location": "Mongolia",
+  "location": {
+    "en": "ITC Tower, 11th floor",
+    "mn": "ITC Tower, 11 давхар"
+  },
   "website": "https://ai-academy.asia",
-
   "contact": {
     "phone": "+976 75051055",
     "email": "info@ai-academy.asia"
   },
-
   "programs": [
     {
-      "id": "junior_ai_engineer",
-      "name": "Become a Junior AI Engineer",
-      "category": "Juniors Program",
-      "age_range": "10-18",
-      "focus": "AI basics, creativity, coding foundations",
+      "id": "summer_bootcamp",
+      "name": {
+        "en": "Become a Junior AI Engineer",
+        "mn": "Junior AI Engineer болох"
+      },
+      "category": {
+        "en": "Juniors Program",
+        "mn": "Хүүхэд, өсвөр үеийн хөтөлбөр"
+      },
+      "age_range": {
+        "en": "10–18 years old",
+        "mn": "10–18 нас"
+      },
+      "description": {
+        "en": "Students explore how artificial intelligence works through hands-on, no-code tools such as Teachable Machine and Google AI Studio. They learn programming fundamentals with Scratch, build their own AI project with mentor guidance, and present it on Demo Day while receiving AIAA Junior Member recognition.",
+        "mn": "Сурагчид Teachable Machine болон Google AI Studio зэрэг no-code хэрэгслүүдийг ашиглан хиймэл оюун ухаан хэрхэн ажилладгийг практик байдлаар судална. Дараа нь Scratch ашиглан програмчлалын суурь ойлголтыг эзэмшиж, багшийн чиглүүлэгтэйгээр өөрсдийн AI төслийг бүтээнэ. Сургалтын төгсгөлд Demo Day арга хэмжээнд төслөө танилцуулж, AIAA Junior Member статусаа гардан авна."
+      },
+      "skills": {
+        "en": [
+          "AI mindset",
+          "No-code AI tools",
+          "Teachable Machine",
+          "Google AI Studio",
+          "Scratch programming",
+          "AI project building"
+        ],
+        "mn": [
+          "AI сэтгэлгээ",
+          "No-code AI хэрэгслүүд",
+          "Teachable Machine",
+          "Google AI Studio",
+          "Scratch програмчлал",
+          "AI төсөл бүтээх"
+        ]
+      },
       "price": "$2,000",
-      "price_note": "At the day's exchange rate",
-      "duration": "14 weeks",
-      "schedule": "Mon, Wed, Fri",
-      "time": "17:00-18:30",
-      "format": "In-person"
+      "price_note": {
+        "en": "At the day's exchange rate",
+        "mn": "Тухайн өдрийн ханшаар"
+      },
+      "duration": {
+        "en": "2026.08.03 – 2026.08.24 (3 weeks)",
+        "mn": "2026.08.03 – 2026.08.24 (3 долоо хоног)"
+      },
+      "schedule": {
+        "en": "Schedule will be confirmed by the academy",
+        "mn": "Хичээлийн хуваарийг академиас баталгаажуулна"
+      },
+      "format": {
+        "en": "In-person",
+        "mn": "Танхимаар"
+      }
     },
     {
-      "id": "ai_engineer_adults",
-      "name": "Become a Globally Competitive AI Engineer",
-      "category": "Adults Program",
-      "age_range": "18+",
-      "focus": "AI tools, automation, real-world AI projects",
-      "price": "$5,000",
-      "price_note": "At the day's exchange rate",
-      "duration": "7 months",
-      "schedule": "Tue, Thu, Sat",
-      "time": "Tue/Thu 18:30-20:00, Sat 10:00-13:30",
-      "format": "In-person"
+      "id": "ai_101_online",
+      "name": {
+        "en": "AI 101 Online",
+        "mn": "AI 101 Онлайн сургалт"
+      },
+      "category": {
+        "en": "Adults Program",
+        "mn": "Насанд хүрэгчдийн хөтөлбөр"
+      },
+      "age_range": {
+        "en": "Adults",
+        "mn": "Насанд хүрэгчид"
+      },
+      "description": {
+        "en": "Students build a strong foundation in Python programming before learning data analysis, machine learning, deep learning, and neural networks. They apply these skills to develop AI solutions using Computer Vision and Natural Language Processing, while learning how AI models can be used in real-world systems.",
+        "mn": "Суралцагчид Python програмчлалын суурийг эзэмшиж, өгөгдөл боловсруулах, машин сургалт, гүн сургалт болон нейрон сүлжээний үндсэн ойлголтуудыг бодит жишээн дээр судална. Дараа нь Computer Vision болон Natural Language Processing зэрэг AI технологийг ашиглан бодит шийдэл боловсруулах арга барилд суралцана."
+      },
+      "skills": {
+        "en": [
+          "Python programming",
+          "Data analysis",
+          "Machine learning",
+          "Deep learning",
+          "Neural networks",
+          "Computer Vision",
+          "Natural Language Processing"
+        ],
+        "mn": [
+          "Python програмчлал",
+          "Өгөгдөл боловсруулах",
+          "Машин сургалт",
+          "Гүн сургалт",
+          "Нейрон сүлжээ",
+          "Computer Vision",
+          "Natural Language Processing"
+        ]
+      },
+      "price": "1,000,000₮",
+      "price_note": {
+        "en": "One-time payment",
+        "mn": "Нэг удаагийн төлбөр"
+      },
+      "duration": {
+        "en": "2026.07.20 – 2026.08.14",
+        "mn": "2026.07.20 – 2026.08.14"
+      },
+      "schedule": {
+        "en": "3 times per week",
+        "mn": "7 хоногт 3 удаа"
+      },
+      "format": {
+        "en": "Online",
+        "mn": "Онлайнаар"
+      }
     },
     {
-      "id": "real_projects_with_ai",
-      "name": "Turn Your Ideas Into Real Projects With AI",
-      "category": "Adults / Project Program",
-      "age_range": "18+",
-      "focus": "Building real projects with AI tools",
-      "price": "999,000₮",
-      "price_note": "One-time payment",
-      "duration": "5 weeks",
-      "schedule": "Mon, Wed, Fri",
-      "time": "07:30-09:00",
-      "format": "Online"
+      "id": "ai_engineer",
+      "name": {
+        "en": "Become a Globally Competitive AI Engineer",
+        "mn": "Олон улсад өрсөлдөх чадвартай AI Engineer болох"
+      },
+      "category": {
+        "en": "Adults / Project Program",
+        "mn": "Насанд хүрэгчдийн төсөлт сургалт"
+      },
+      "age_range": {
+        "en": "Adults",
+        "mn": "Насанд хүрэгчид"
+      },
+      "description": {
+        "en": "Go beyond theory by building your own AI project from concept to completion with hands-on guidance throughout the program. Upon successful completion, students receive an internationally accredited certificate.",
+        "mn": "Зөвхөн онол судлахаас гадна өөрийн AI төслийг санаанаас нь эхлэн бүрэн хэрэгжүүлж, бодит туршлага хуримтлуулна. Сургалтыг амжилттай төгссөний дараа олон улсад магадлан итгэмжлэгдсэн сертификат гардан авна."
+      },
+      "skills": {
+        "en": [
+          "Python programming",
+          "Data analysis",
+          "Machine learning",
+          "Deep learning",
+          "Neural networks",
+          "Computer Vision",
+          "Natural Language Processing",
+          "AI Engineering",
+          "AI deployment",
+          "AI system thinking",
+          "Capstone project"
+        ],
+        "mn": [
+          "Python програмчлал",
+          "Өгөгдөл боловсруулах",
+          "Машин сургалт",
+          "Гүн сургалт",
+          "Нейрон сүлжээ",
+          "Computer Vision",
+          "Natural Language Processing",
+          "AI Engineering",
+          "AI загвар нэвтрүүлэлт",
+          "AI системийн сэтгэлгээ",
+          "Төгсөлтийн төсөл"
+        ]
+      },
+      "price": "17,900,000₮",
+      "price_note": {
+        "en": "One-time payment",
+        "mn": "Нэг удаагийн төлбөр"
+      },
+      "duration": {
+        "en": "2026.08.17 – 2027.03.17 (7 months)",
+        "mn": "2026.08.17 – 2027.03.17 (7 сар)"
+      },
+      "schedule": {
+        "en": "3 times per week",
+        "mn": "7 хоногт 3 удаа"
+      },
+      "format": {
+        "en": "In-person",
+        "mn": "Танхимаар"
+      }
     },
     {
-      "id": "top_universities_with_ai",
-      "name": "Prepare for Top Universities With AI",
-      "category": "University Preparation",
-      "age_range": "High school students",
-      "focus": "Using AI to prepare for top university applications",
-      "price": "$5,000",
-      "price_note": "At the day's exchange rate",
-      "duration": "4 months",
-      "schedule": "3x/week",
-      "time": "Outside school hours",
-      "format": "In-person"
+      "id": "corporate_leaders",
+      "name": {
+        "en": "AI for Companies and Business Leaders",
+        "mn": "Байгууллага болон удирдлагуудад зориулсан AI сургалт"
+      },
+      "category": {
+        "en": "For Companies",
+        "mn": "Байгууллагуудад зориулсан"
+      },
+      "age_range": {
+        "en": "Business leaders and teams",
+        "mn": "Байгууллагын удирдлага болон багууд"
+      },
+      "description": {
+        "en": "Designed for companies and business leaders, this program focuses on AI strategy, governance, and practical business applications. Participants learn how to use AI to improve workflows, automate tasks, and build no-code prototypes using Vibe Coding and AI Agents.",
+        "mn": "Байгууллага болон удирдлагуудад зориулсан энэхүү сургалт нь AI стратеги, засаглал болон бодит бизнесийн хэрэглээнд төвлөрнө. Оролцогчид AI ашиглан ажлын урсгалыг сайжруулах, даалгаврыг автоматжуулах, Vibe Coding болон AI Agents ашиглан код бичихгүйгээр прототип бүтээх арга барилд суралцана."
+      },
+      "skills": {
+        "en": [
+          "AI strategy",
+          "AI governance",
+          "Business AI applications",
+          "Workflow automation",
+          "Vibe Coding",
+          "AI Agents",
+          "No-code prototyping"
+        ],
+        "mn": [
+          "AI стратеги",
+          "AI засаглал",
+          "Бизнес дэх AI хэрэглээ",
+          "Ажлын урсгал автоматжуулалт",
+          "Vibe Coding",
+          "AI Agents",
+          "No-code прототип бүтээх"
+        ]
+      },
+      "price": "$1,600",
+      "price_note": {
+        "en": "At the day's exchange rate",
+        "mn": "Тухайн өдрийн ханшаар"
+      },
+      "duration": {
+        "en": "2 months",
+        "mn": "2 сар"
+      },
+      "schedule": {
+        "en": "2 times per week",
+        "mn": "7 хоногт 2 удаа"
+      },
+      "format": {
+        "en": "In-person or customized for companies",
+        "mn": "Танхимаар эсвэл байгууллагын хэрэгцээнд тохируулан"
+      }
     }
   ],
-
-  "learning_style": [
-    "Project-based learning",
-    "Real-world AI projects",
-    "Hands-on practice"
-  ],
-
-  "certificates": {
-    "cpd_accredited": true
+  "learning_style": {
+    "en": [
+      "Project-based learning",
+      "Real-world AI projects",
+      "Hands-on practice"
+    ],
+    "mn": [
+      "Төсөлд суурилсан сургалт",
+      "Бодит AI төслүүд",
+      "Практик дадлага"
+    ]
   },
-
-
-  "currency_note": "Some program prices are listed in USD at the day's exchange rate; some are listed in MNT.",
+  "certificates": {
+    "cpd_accredited": true,
+    "description": {
+      "en": "Some programs provide an internationally accredited certificate upon successful completion.",
+      "mn": "Зарим сургалтыг амжилттай төгссөнөөр олон улсад магадлан итгэмжлэгдсэн сертификат олгоно."
+    }
+  },
+  "currency_note": {
+    "en": "Some program prices are listed in USD at the day's exchange rate; some are listed in MNT.",
+    "mn": "Зарим сургалтын төлбөрийг тухайн өдрийн ханшаар ам.доллараар, заримыг төгрөгөөр тооцдог."
+  },
   "contact_for_latest_price": "+976 75051055"
 }
