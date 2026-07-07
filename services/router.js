@@ -12,7 +12,7 @@ async function router(userId, text) {
   const memory = updateMemory(userId, text);
   const knowledge = getKnowledge();
 
-  let intent = detectIntent(text);
+  let intent = await detectIntent(text);
   const previousIntent = memory.lastIntent;
 
   console.log("User text:", text);
