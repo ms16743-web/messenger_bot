@@ -15,6 +15,7 @@ async function router(userId, text) {
   let intent = detectIntent(text);
   const previousIntent = memory.lastIntent;
 
+  console.log("User text:", text);
   console.log("Intent:", intent);
   console.log("Previous:", previousIntent);
 
