@@ -12,16 +12,20 @@ async function router(userId, text) {
   const memory = updateMemory(userId, text);
   const knowledge = getKnowledge();
 
+  let intent = detectIntent(text);
   const previousIntent = memory.lastIntent;
-  const intent = await detectIntent(text);
 
-  console.log("Detected intent:", intent);
-  console.log("Previous intent:", previousIntent);
+  console.log("Intent:", intent);
+  console.log("Previous:", previousIntent);
 
-  if (previousIntent === "pricing") {
-    const pricingReply = pricingHandler(text, memory, knowledge);
-    memory.lastIntent = "pricing";
-    return pricingReply;
+  // If user asks a clear new question, answer that.
+  // If unclear, continue previous pricing/programs flow.
+  if (intent === "unknown" && previousIntent === "pricing") {
+    intent = "pricing";
+  }
+
+  if (intent === "unknown" && previousIntent === "programs") {
+    intent = "programs";
   }
 
   memory.lastIntent = intent;
@@ -35,13 +39,14 @@ async function router(userId, text) {
   }
 
   if (intent === "programs") {
-    return programsHandler(memory, knowledge);
+    return programsHandler(memory, knowledge, text);
   }
 
   if (intent === "location") {
     return locationHandler(memory, knowledge);
   }
 
+  // Anything unusual goes to Groq AI fallback
   return await aiHandler(text, memory, knowledge);
 }
 
