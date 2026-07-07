@@ -17,16 +17,3 @@ function getKnowledge() {
 }
 
 module.exports = { getKnowledge };
-
-function getKnowledge() {
-  return {
-    academy: loadJSON("academy.json"),
-    pricing: loadJSON("pricing.json"),
-    faq: loadJSON("faq.json"),
-    location: loadJSON("location.json"),
-    contacts: loadJSON("contacts.json"),
-    schedule: loadJSON("schedule.json")
-  };
-}
-
-module.exports = { getKnowledge };
