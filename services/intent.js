@@ -1,89 +1,140 @@
-function programsHandler(memory, knowledge, text = "") {
-  const lang = memory.language === "mn" ? "mn" : "en";
-  const programs = knowledge.programs || [];
+const Groq = require("groq-sdk");
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY
+});
+
+async function detectIntent(text) {
   const msg = text.toLowerCase();
 
-  const selectedProgram = findProgram(msg, programs);
-
-  // If customer chose a specific program
-  if (selectedProgram) {
-    memory.currentProgram = selectedProgram.id;
-
-    return lang === "mn"
-      ? `${selectedProgram.name.mn}
-
-${selectedProgram.description.mn}
-
-Хугацаа: ${selectedProgram.duration.mn}
-Хуваарь: ${selectedProgram.schedule.mn}
-Хэлбэр: ${selectedProgram.format.mn}
-
-Төлбөрийн мэдээлэл авах уу?`
-      : `${selectedProgram.name.en}
-
-${selectedProgram.description.en}
-
-Duration: ${selectedProgram.duration.en}
-Schedule: ${selectedProgram.schedule.en}
-Format: ${selectedProgram.format.en}
-
-Would you like pricing information?`;
+  // 1. Manual safety rules first
+  if (
+    msg.includes("sn") ||
+    msg.includes("sain") ||
+    msg.includes("hi") ||
+    msg.includes("hello") ||
+    msg.includes("сайн")
+  ) {
+    return "greeting";
   }
 
-  // First general program info = brief only
-  return lang === "mn"
-    ? `AI Academy Asia дараах сургалтуудтай:
+  if (
+    msg.includes("une") ||
+    msg.includes("tolbor") ||
+    msg.includes("price") ||
+    msg.includes("cost") ||
+    msg.includes("үнэ") ||
+    msg.includes("төлбөр")
+  ) {
+    return "pricing";
+  }
 
-• ${programs.map(p => p.name.mn).join("\n• ")}
+  if (
+    msg.includes("medeelel") ||
+    msg.includes("мэдээлэл") ||
+    msg.includes("surgalt") ||
+    msg.includes("surgaltiin") ||
+    msg.includes("course") ||
+    msg.includes("program") ||
+    msg.includes("хөтөлбөр") ||
+    msg.includes("сургалт")
+  ) {
+    return "programs";
+  }
 
-Та аль сургалтын талаар дэлгэрэнгүй мэдээлэл авах вэ?`
-    : `AI Academy Asia offers these programs:
+  if (
+    msg.includes("hayag") ||
+    msg.includes("haana") ||
+    msg.includes("location") ||
+    msg.includes("address") ||
+    msg.includes("хаяг") ||
+    msg.includes("хаана")
+  ) {
+    return "location";
+  }
 
-• ${programs.map(p => p.name.en).join("\n• ")}
+  if (
+    msg.includes("certificate") ||
+    msg.includes("sertifikat") ||
+    msg.includes("сертификат")
+  ) {
+    return "certificate";
+  }
 
-Which program would you like to know more about?`;
+  if (
+    msg.includes("schedule") ||
+    msg.includes("huvaari") ||
+    msg.includes("хуваарь") ||
+    msg.includes("tsag") ||
+    msg.includes("цаг")
+  ) {
+    return "schedule";
+  }
+
+  // 2. If manual rules don't catch it, ask Groq
+  const systemPrompt = `
+You are an intent classifier for AI Academy Asia Messenger chatbot.
+
+Classify the customer message into exactly ONE intent.
+
+Allowed intents:
+greeting
+pricing
+programs
+schedule
+location
+certificate
+registration
+unknown
+
+Understand Mongolian Cyrillic, Monglish, English, abbreviations, and typos.
+
+Examples:
+"sn bnu" -> greeting
+"sain baina uu" -> greeting
+"hi" -> greeting
+"medeelel avii" -> programs
+"surgaltiin medeelel avii" -> programs
+"une hed ve" -> pricing
+"hayag haana ve" -> location
+"certificate ugdug uu" -> certificate
+"schedule ymar ve" -> schedule
+
+Return only the intent word.
+No explanation.
+`;
+
+  const response = await groq.chat.completions.create({
+    model: "llama-3.1-8b-instant",
+    messages: [
+      {
+        role: "system",
+        content: systemPrompt
+      },
+      {
+        role: "user",
+        content: text
+      }
+    ],
+    temperature: 0
+  });
+
+  const intent = response.choices[0].message.content
+    .trim()
+    .toLowerCase();
+
+  const allowed = [
+    "greeting",
+    "pricing",
+    "programs",
+    "schedule",
+    "location",
+    "certificate",
+    "registration",
+    "unknown"
+  ];
+
+  return allowed.includes(intent) ? intent : "unknown";
 }
 
-function findProgram(msg, programs) {
-  if (
-    msg.includes("junior") ||
-    msg.includes("kids") ||
-    msg.includes("child") ||
-    msg.includes("huuh") ||
-    msg.includes("хүүх") ||
-    msg.includes("summer")
-  ) {
-    return programs.find(p => p.id === "summer_bootcamp");
-  }
-
-  if (
-    msg.includes("101") ||
-    msg.includes("online") ||
-    msg.includes("онлайн")
-  ) {
-    return programs.find(p => p.id === "ai_101_online");
-  }
-
-  if (
-    msg.includes("engineer") ||
-    msg.includes("инженер") ||
-    msg.includes("adult") ||
-    msg.includes("насанд")
-  ) {
-    return programs.find(p => p.id === "ai_engineer");
-  }
-
-  if (
-    msg.includes("company") ||
-    msg.includes("corporate") ||
-    msg.includes("business") ||
-    msg.includes("байгуул") ||
-    msg.includes("компани")
-  ) {
-    return programs.find(p => p.id === "corporate_leaders");
-  }
-
-  return null;
-}
-
-module.exports = programsHandler;
+module.exports = { detectIntent };
