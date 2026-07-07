@@ -1,22 +1,8 @@
-const fs = require("fs");
-const path = require("path");
+require("dotenv").config();
 
-function getKnowledge() {
-  try {
-    const filePath = path.join(__dirname, "..", "knowledge", "academy.json");
-    return JSON.parse(fs.readFileSync(filePath, "utf8"));
-  } catch (err) {
-    console.log("❌ Failed to load academy.json:", err.message);
-    return {
-      programs: [],
-      contact: {
-        phone: "+976 75051055"
-      }
-    };
-  }
-}
-
-module.exports = { getKnowledge };
+const { router } = require("./services/router");
+const express = require("express");
+const axios = require("axios");
 
 const app = express();
 app.use(express.json());
@@ -64,7 +50,6 @@ app.post("/webhook", async (req, res) => {
 
     const reply = await router(senderId, messageText);
     await sendMessage(senderId, reply);
-
   } catch (err) {
     console.log("❌ WEBHOOK ERROR:", err.message);
   }
