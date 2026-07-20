@@ -3,10 +3,18 @@ const path = require("path");
 
 function getKnowledge() {
   try {
-    const filePath = path.join(__dirname, "..", "knowledge", "academy.json");
-    return JSON.parse(fs.readFileSync(filePath, "utf8"));
-  } catch (err) {
-    console.log("❌ Failed to load academy.json:", err.message);
+    const filePath = path.join(
+      __dirname,
+      "..",
+      "knowledge",
+      "academy.json"
+    );
+
+    const file = fs.readFileSync(filePath, "utf8");
+    return JSON.parse(file);
+  } catch (error) {
+    console.log("❌ Knowledge loading error:", error.message);
+
     return {
       programs: [],
       contact: {

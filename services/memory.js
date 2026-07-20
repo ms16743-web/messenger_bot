@@ -1,99 +1,66 @@
-// services/memory.js
+const { createClient } = require("redis");
 
-const userMemory = {};
+const redisClient = createClient({
+  url: process.env.REDIS_URL,
+});
 
-function createProfile() {
-  return {
-    language: null,
-    role: null,
-    age: null,
-    goal: null,
-    experience: null,
-    currentProgram: null,
-    lastIntent: null,
-    conversationStage: "start"
-  };
+redisClient.on("error", (error) => {
+  console.error("Redis error:", error);
+});
+
+async function connectRedis() {
+  if (!redisClient.isOpen) {
+    await redisClient.connect();
+    console.log("Redis connected");
+  }
 }
 
-function getMemory(userId) {
-  if (!userMemory[userId]) {
-    userMemory[userId] = createProfile();
-  }
-
-  return userMemory[userId];
+function getSessionKey(senderId) {
+  return `bot:user:${senderId}:session`;
 }
 
-function updateMemory(userId, text) {
-  const memory = getMemory(userId);
-  const msg = text.toLowerCase();
+async function getSession(senderId) {
+  const key = getSessionKey(senderId);
+  const savedSession = await redisClient.get(key);
 
- // language detection
-const monglishWords = [
-  "sain", "sn", "bnu", "baina", "bn", "uu", "u",
-  "bi", "minii", "manai", "tanai", "tanii",
-  "medeelel", "avmaar", "asuumaar", "sonirhoj", "sonirhood",
-  "surgalt", "surgaltiin", "course", "hicheel",
-  "huuhdiin", "huuhed", "nas", "nastai",
-  "une", "tolbor", "hed", "ymar",
-  "hayag", "haana", "bdg", "baidag",
-  "burtguuleh", "herhen", "yaaj",
-  "huvaari", "tsag", "udur",
-  "sertifikat", "certificate", "olgoj", "ogdog", "avii", "awii", "avya", "awya", "avah", "avmaar",
-"medeelel", "medeelliin", "delgerengui"
-];
+  if (!savedSession) {
+    return {
+      selectedProgram: null,
+      lastTopic: null,
+      answered: [],
+    };
+  }
 
-const hasCyrillic = /[а-яөүА-ЯӨҮ]/.test(text);
+  try {
+    return JSON.parse(savedSession);
+  } catch (error) {
+    console.error("Session parsing error:", error);
 
-const monglishCount = monglishWords.filter(word =>
-  msg.includes(word)
-).length;
-
-if (hasCyrillic || monglishCount >= 2) {
-  memory.language = "mn";
-} else {
-  memory.language = "en";
+    return {
+      selectedProgram: null,
+      lastTopic: null,
+      answered: [],
+    };
+  }
 }
 
-  // age detection
-  const ageMatch = msg.match(/\b\d{1,2}\b/);
-  if (ageMatch) {
-    const age = parseInt(ageMatch[0]);
+async function saveSession(senderId, session) {
+  const key = getSessionKey(senderId);
 
-    if (age >= 5 && age <= 80) {
-      memory.age = age;
-    }
-  }
-
-  // goal detection
-  if (msg.includes("ai") || msg.includes("хиймэл")) {
-    memory.goal = "AI";
-  }
-
-  if (
-    msg.includes("programming") ||
-    msg.includes("code") ||
-    msg.includes("код") ||
-    msg.includes("программ")
-  ) {
-    memory.goal = "programming";
-  }
-
-  if (
-    msg.includes("automation") ||
-    msg.includes("автомат")
-  ) {
-    memory.goal = "automation";
-  }
-
-  return memory;
+  await redisClient.set(key, JSON.stringify(session), {
+    EX: 60 * 60,
+  });
 }
 
-function resetMemory(userId) {
-  userMemory[userId] = createProfile();
+async function clearSession(senderId) {
+  const key = getSessionKey(senderId);
+  await redisClient.del(key);
 }
 
 module.exports = {
-  getMemory,
-  updateMemory,
-  resetMemory
+  redisClient,
+  connectRedis,
+  getSession,
+  saveSession,
+  clearSession,
 };

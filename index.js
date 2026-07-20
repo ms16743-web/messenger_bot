@@ -1,17 +1,31 @@
 require("dotenv").config();
 
-const { router } = require("./services/router");
 const express = require("express");
 const axios = require("axios");
+const { router } = require("./services/router");
+const { connectRedis } = require("./services/memory");
 
 const app = express();
+
 app.use(express.json());
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 
+const PORT = process.env.PORT || 3000;
+
+const messageBuffers = new Map();
+const MESSAGE_DELAY = 3000;
+
 app.get("/", (req, res) => {
-  res.send("Bot server is running!");
+  res.status(200).send("AI Academy Messenger bot is running.");
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "Bot server is healthy",
+  });
 });
 
 app.get("/webhook", (req, res) => {
@@ -19,67 +33,143 @@ app.get("/webhook", (req, res) => {
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
-  console.log("VERIFY HIT:", req.query);
+  console.log("Webhook verification request received.");
 
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    console.log("Webhook verified successfully.");
     return res.status(200).send(challenge);
   }
 
+  console.log("Webhook verification failed.");
   return res.sendStatus(403);
 });
 
-app.post("/webhook", async (req, res) => {
-  console.log("🔥 WEBHOOK RECEIVED");
+app.post("/webhook", (req, res) => {
+  // Facebook-д webhook хүлээн авсныг шууд мэдэгдэнэ.
+  res.sendStatus(200);
 
   try {
-    const entry = req.body.entry?.[0];
-    const event = entry?.messaging?.[0];
+    const entries = req.body.entry || [];
 
-    if (!event || !event.message || event.message.is_echo) {
-      return res.sendStatus(200);
+    for (const entry of entries) {
+      const messagingEvents = entry.messaging || [];
+
+      for (const event of messagingEvents) {
+        if (!event.message) continue;
+        if (event.message.is_echo) continue;
+
+        const senderId = event.sender?.id;
+        const messageText = event.message?.text?.trim();
+
+        if (!senderId || !messageText) continue;
+
+        console.log("Received message:", messageText);
+
+        addMessageToBuffer(senderId, messageText);
+      }
     }
-
-    const senderId = event.sender?.id;
-    const messageText = event.message?.text;
-
-    if (!senderId || !messageText) {
-      return res.sendStatus(200);
-    }
-
-    console.log("User:", messageText);
-
-    const reply = await router(senderId, messageText);
-    await sendMessage(senderId, reply);
-  } catch (err) {
-    console.log("❌ WEBHOOK ERROR:", err.message);
+  } catch (error) {
+    console.error("Webhook processing error:", error.message);
   }
-
-  res.sendStatus(200);
 });
 
+function addMessageToBuffer(senderId, messageText) {
+  let userBuffer = messageBuffers.get(senderId);
+
+  if (!userBuffer) {
+    userBuffer = {
+      messages: [],
+      timer: null,
+    };
+
+    messageBuffers.set(senderId, userBuffer);
+  }
+
+  userBuffer.messages.push(messageText);
+
+  if (userBuffer.timer) {
+    clearTimeout(userBuffer.timer);
+  }
+
+  userBuffer.timer = setTimeout(async () => {
+    const combinedMessage = userBuffer.messages.join("\n");
+
+    messageBuffers.delete(senderId);
+
+    console.log("Combined message:", combinedMessage);
+
+    try {
+      const reply = await router(senderId, combinedMessage);
+
+      if (!reply) {
+        console.log("Router returned an empty response.");
+        return;
+      }
+
+      await sendMessage(senderId, reply);
+    } catch (error) {
+      console.error("Bot response error:", error.message);
+
+      await sendMessage(
+        senderId,
+        "Уучлаарай, одоогоор таны асуултад хариулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай."
+      );
+    }
+  }, MESSAGE_DELAY);
+}
+
 async function sendMessage(psid, text) {
+  if (!PAGE_ACCESS_TOKEN) {
+    console.error("PAGE_ACCESS_TOKEN is missing.");
+    return;
+  }
+
+  if (!psid || !text) {
+    console.error("Recipient ID or reply text is missing.");
+    return;
+  }
+
   try {
     await axios.post(
       "https://graph.facebook.com/v19.0/me/messages",
       {
-        recipient: { id: psid },
-        message: { text }
+        recipient: {
+          id: psid,
+        },
+        messaging_type: "RESPONSE",
+        message: {
+          text,
+        },
       },
       {
         params: {
-          access_token: PAGE_ACCESS_TOKEN
-        }
+          access_token: PAGE_ACCESS_TOKEN,
+        },
+        timeout: 10000,
       }
     );
 
-    console.log("✅ Message sent");
-  } catch (err) {
-    console.log("❌ Send error:", err.response?.data || err.message);
+    console.log("Message sent successfully.");
+  } catch (error) {
+    console.error(
+      "Messenger send error:",
+      error.response?.data || error.message
+    );
   }
 }
 
-const PORT = process.env.PORT || 3000;
+async function startServer() {
+  try {
+    await connectRedis();
+    console.log("✅ Redis connected successfully.");
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("❌ Failed to start server:", error);
+    process.exit(1);
+  }
+}
+
+startServer();
