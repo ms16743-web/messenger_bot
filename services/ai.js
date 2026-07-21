@@ -2,6 +2,12 @@
  * Gemini AI service for AI Academy Asia Messenger chatbot.
  */
 
+// Node 18+ has fetch built in globally. If Render's runtime is older,
+// or the global isn't available for any reason, fall back to node-fetch
+// so this never silently breaks.
+const fetchFn =
+  typeof fetch === "function" ? fetch : require("node-fetch");
+
 const GEMINI_MODEL = "gemini-2.5-flash";
 
 function getSelectedProgram(knowledge, session) {
@@ -152,7 +158,7 @@ async function aiHandler(text, knowledge, session = {}) {
 
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/` +
-    `${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    `${GEMINI_MODEL}:generateContent`;
 
   const requestBody = {
     systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -165,9 +171,12 @@ async function aiHandler(text, knowledge, session = {}) {
   };
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchFn(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
       body: JSON.stringify(requestBody),
     });
 
