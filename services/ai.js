@@ -8,7 +8,7 @@
 const fetchFn =
   typeof fetch === "function" ? fetch : require("node-fetch");
 
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL = "gemini-3.5-flash";
 
 function getSelectedProgram(knowledge, session) {
   if (!session?.selectedProgram) return null;
