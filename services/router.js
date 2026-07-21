@@ -53,8 +53,7 @@ function pushHistory(session, userText, botText) {
 // Anything longer, or a greeting combined with a question, falls
 // through to the AI, which handles that case naturally.
 const GREETING_ONLY_REGEX =
-  /^(сайн байна уу|сайн уу|сайн|мэнд байна уу|мэнд|hi|hello|hey|Сайн байна уу|Сайн уу|сайн|Мэнд байна уу|Мэнд)[\s!.,😊🙂👋]*$/i;
-  
+  /^(сайн байна уу|сайн уу|сайн|мэнд байна уу|мэнд|hi|hello|hey)[\s!.,😊🙂👋]*$/i;
 
 async function router(userId, text) {
   const message = text.trim();

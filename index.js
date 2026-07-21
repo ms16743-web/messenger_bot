@@ -27,7 +27,12 @@ app.get("/health", (req, res) => {
     message: "Bot server is healthy",
   });
 });
-
+const path = require("path");
+ 
+app.get("/privacy-policy", (req, res) => {
+  res.sendFile(path.join(__dirname, "privacy-policy.html"));
+});
+ 
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];

@@ -143,6 +143,31 @@ function buildContents(session, text) {
   ];
 }
 
+/**
+ * Calls Gemini, retrying once after a short delay if the model is
+ * temporarily overloaded (503). Most 503s clear up within a second or two.
+ */
+async function callGemini(url, apiKey, requestBody, attempt = 1) {
+  const response = await fetchFn(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok && response.status === 503 && attempt < 2) {
+    console.warn(`⚠️ Gemini 503 (overloaded), retrying... attempt ${attempt + 1}`);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return callGemini(url, apiKey, requestBody, attempt + 1);
+  }
+
+  return { response, data };
+}
+
 async function aiHandler(text, knowledge, session = {}) {
   const apiKey = process.env.GEMINI_API_KEY;
 
@@ -171,19 +196,15 @@ async function aiHandler(text, knowledge, session = {}) {
   };
 
   try {
-    const response = await fetchFn(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    const data = await response.json();
+    const { response, data } = await callGemini(url, apiKey, requestBody);
 
     if (!response.ok) {
       console.error("❌ Gemini API error:", response.status, JSON.stringify(data));
+
+      if (response.status === 503) {
+        return "Уучлаарай, систем түр удаашралтай байна. Хэдхэн секундын дараа дахин бичээрэй 🙏";
+      }
+
       return (
         knowledge.fallback ||
         "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна."
