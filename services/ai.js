@@ -1,3 +1,9 @@
+/**
+ * Gemini AI service for AI Academy Asia Messenger chatbot.
+ */
+
+// Node 18+ has fetch built in globally. If Render's runtime is older,
+// fall back to node-fetch.
 const fetchFn =
   typeof fetch === "function" ? fetch : require("node-fetch");
 
@@ -5,6 +11,7 @@ const GEMINI_MODEL = "gemini-3.5-flash";
 
 function getSelectedProgram(knowledge, session) {
   if (!session?.selectedProgram) return null;
+
   return (
     knowledge.programs?.find(
       (program) => program.id === session.selectedProgram
@@ -14,6 +21,7 @@ function getSelectedProgram(knowledge, session) {
 
 function getMentionedPrograms(knowledge, session) {
   if (!Array.isArray(session?.mentionedPrograms)) return [];
+
   return session.mentionedPrograms
     .map((programId) =>
       knowledge.programs?.find((program) => program.id === programId)
@@ -27,12 +35,17 @@ function buildSystemPrompt(knowledge, session) {
 
   const conversationContext = {
     selectedProgram: selectedProgram
-      ? { id: selectedProgram.id, name: selectedProgram.name }
+      ? {
+          id: selectedProgram.id,
+          name: selectedProgram.name,
+        }
       : null,
+
     mentionedPrograms: mentionedPrograms.map((program) => ({
       id: program.id,
       name: program.name,
     })),
+
     lastTopic: session?.lastTopic || null,
   };
 
@@ -119,79 +132,130 @@ ${JSON.stringify(knowledge, null, 2)}
 }
 
 /**
- * Turns the session's stored history into Gemini's multi-turn
- * `contents` format, then appends the current message.
- * Gemini requires alternating user/model roles, which holds as
- * long as router.js always pushes turns in user+model pairs.
+ * Converts stored conversation history into Gemini's multi-turn format,
+ * then adds the user's current message.
  */
 function buildContents(session, text) {
-  const history = Array.isArray(session?.history) ? session.history : [];
+  const history = Array.isArray(session?.history)
+    ? session.history
+    : [];
 
   return [
     ...history.map((turn) => ({
       role: turn.role === "model" ? "model" : "user",
       parts: [{ text: turn.text }],
     })),
-    { role: "user", parts: [{ text }] },
+
+    {
+      role: "user",
+      parts: [{ text }],
+    },
   ];
 }
 
-async function callGemini(url, apiKey, requestBody, attempt = 1) {
+/**
+ * Calls Gemini and retries once when the API returns a 503 error.
+ */
+async function callGemini(
+  url,
+  apiKey,
+  requestBody,
+  attempt = 1
+) {
   const response = await fetchFn(url, {
     method: "POST",
+
     headers: {
       "Content-Type": "application/json",
       "x-goog-api-key": apiKey,
     },
+
     body: JSON.stringify(requestBody),
   });
 
   const data = await response.json();
 
-  if (!response.ok && response.status === 503 && attempt < 2) {
-    console.warn(`⚠️ Gemini 503 (overloaded), retrying... attempt ${attempt + 1}`);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return callGemini(url, apiKey, requestBody, attempt + 1);
-  }
+  if (
+    !response.ok &&
+    response.status === 503 &&
+    attempt < 2
+  ) {
+    console.warn(
+      `⚠️ Gemini 503 overloaded. Retrying attempt ${attempt + 1}.`
+    );
 
-  return { response, data };
-}
+    await new Promise((resolve) =>
+      setTimeout(resolve, 1000)
+    );
 
-async function aiHandler(text, knowledge, session = {}) {
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    console.error("❌ GEMINI_API_KEY is missing from environment variables.");
-    return (
-      knowledge.fallback ||
-      "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай."
+    return callGemini(
+      url,
+      apiKey,
+      requestBody,
+      attempt + 1
     );
   }
 
-  const systemPrompt = buildSystemPrompt(knowledge, session);
+  return {
+    response,
+    data,
+  };
+}
+
+async function aiHandler(
+  text,
+  knowledge,
+  session = {}
+) {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    console.error(
+      "❌ GEMINI_API_KEY is missing from environment variables."
+    );
+
+    return (
+      knowledge.fallback ||
+      "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна."
+    );
+  }
+
+  const systemPrompt = buildSystemPrompt(
+    knowledge,
+    session
+  );
 
   const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/` +
+    "https://generativelanguage.googleapis.com/v1beta/models/" +
     `${GEMINI_MODEL}:generateContent`;
 
   const requestBody = {
-    systemInstruction: { parts: [{ text: systemPrompt }] },
+    systemInstruction: {
+      parts: [{ text: systemPrompt }],
+    },
+
     contents: buildContents(session, text),
+
     generationConfig: {
       temperature: 0.6,
       topP: 0.9,
       maxOutputTokens: 1024,
-      thinkingConfig: {
-        thinkingLevel: "low",
-      },
     },
   };
 
   try {
-    const { response, data } = await callGemini(url, apiKey, requestBody);
+    const { response, data } = await callGemini(
+      url,
+      apiKey,
+      requestBody
+    );
 
     if (!response.ok) {
-      console.error("❌ Gemini API error:", response.status, JSON.stringify(data));
+      console.error(
+        "❌ Gemini API error:",
+        response.status,
+        JSON.stringify(data)
+      );
 
       if (response.status === 503) {
         return "Уучлаарай, систем түр удаашралтай байна. Хэдхэн секундын дараа дахин бичээрэй 🙏";
@@ -199,34 +263,50 @@ async function aiHandler(text, knowledge, session = {}) {
 
       return (
         knowledge.fallback ||
-        "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай."
+        "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна."
       );
     }
 
-    const finishReason = data.candidates?.[0]?.finishReason;
-    if (finishReason && finishReason !== "STOP") {
-      console.warn(`⚠️ Gemini finishReason: ${finishReason} (reply may be truncated or filtered)`);
+    const finishReason =
+      data.candidates?.[0]?.finishReason;
+
+    if (
+      finishReason &&
+      finishReason !== "STOP"
+    ) {
+      console.warn(
+        `⚠️ Gemini finishReason: ${finishReason}`
+      );
     }
 
-    const reply = data.candidates?.[0]?.content?.parts
-      ?.map((part) => part.text || "")
-      .join("")
-      .trim();
+    const reply =
+      data.candidates?.[0]?.content?.parts
+        ?.map((part) => part.text || "")
+        .join("")
+        .trim();
 
     if (!reply) {
-      console.error("❌ Gemini returned no text:", JSON.stringify(data));
+      console.error(
+        "❌ Gemini returned no text:",
+        JSON.stringify(data)
+      );
+
       return (
         knowledge.fallback ||
-        "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай."
+        "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна."
       );
     }
 
     return reply;
   } catch (error) {
-    console.error("❌ Gemini request failed:", error.message);
+    console.error(
+      "❌ Gemini request failed:",
+      error.message
+    );
+
     return (
       knowledge.fallback ||
-      "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай."
+      "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна."
     );
   }
 }
