@@ -166,7 +166,7 @@ async function aiHandler(text, knowledge, session = {}) {
     generationConfig: {
       temperature: 0.6,
       topP: 0.9,
-      maxOutputTokens: 500,
+      maxOutputTokens: 1024,
     },
   };
 
@@ -188,6 +188,11 @@ async function aiHandler(text, knowledge, session = {}) {
         knowledge.fallback ||
         "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна."
       );
+    }
+
+    const finishReason = data.candidates?.[0]?.finishReason;
+    if (finishReason && finishReason !== "STOP") {
+      console.warn(`⚠️ Gemini finishReason: ${finishReason} (reply may be truncated or filtered)`);
     }
 
     const reply = data.candidates?.[0]?.content?.parts
