@@ -6,12 +6,6 @@ const {
   clearSession,
 } = require("./memory");
 
-/**
- * Normalize text so program matching is not affected by:
- * - uppercase/lowercase
- * - commas and punctuation
- * - repeated spaces
- */
 function normalizeText(text) {
   return text
     .toLowerCase()
@@ -20,14 +14,6 @@ function normalizeText(text) {
     .trim();
 }
 
-/**
- * Finds all programs mentioned in the user's message.
- *
- * Returns:
- * []                    → no program detected
- * [program]             → one program detected
- * [program1, program2]  → multiple programs detected
- */
 function detectPrograms(message, knowledge) {
   const normalizedMessage = normalizeText(message);
   const detectedPrograms = [];
@@ -41,47 +27,51 @@ function detectPrograms(message, knowledge) {
 
     const matched = possibleNames.some((name) => {
       const normalizedName = normalizeText(name);
-
-      if (!normalizedName) {
-        return false;
-      }
-
+      if (!normalizedName) return false;
       return normalizedMessage.includes(normalizedName);
     });
 
-    if (matched) {
-      detectedPrograms.push(program);
-    }
+    if (matched) detectedPrograms.push(program);
   }
 
   return detectedPrograms;
 }
+
+/**
+ * Appends this turn to the session's short-term history and
+ * trims it so the Gemini request doesn't grow unbounded.
+ * Keeps the last 5 exchanges (10 entries: user+model pairs).
+ */
+function pushHistory(session, userText, botText) {
+  session.history = Array.isArray(session.history) ? session.history : [];
+  session.history.push({ role: "user", text: userText });
+  session.history.push({ role: "model", text: botText });
+  session.history = session.history.slice(-10);
+}
+
+// Only matches messages that are ENTIRELY a greeting, nothing else.
+// Anything longer, or a greeting combined with a question, falls
+// through to the AI, which handles that case naturally.
+const GREETING_ONLY_REGEX =
+  /^(сайн байна уу|сайн уу|сайн|мэнд байна уу|мэнд|hi|hello|hey)[\s!.,😊🙂👋]*$/i;
 
 async function router(userId, text) {
   const message = text.trim();
   const msg = normalizeText(message);
   const knowledge = getKnowledge();
 
-  // Load this Messenger user's existing memory.
   const session = await getSession(userId);
 
-  // Detect programs before language validation.
-  // This allows official names such as "Junior" and "AI 101".
   const detectedPrograms = detectPrograms(message, knowledge);
   const hasRecognizedProgram = detectedPrograms.length > 0;
 
   const hasMongolianCyrillic = /[А-Яа-яӨөҮүЁё]/.test(message);
   const isNumberOnly = /^\d+$/.test(message);
 
-  if (
-    !hasMongolianCyrillic &&
-    !isNumberOnly &&
-    !hasRecognizedProgram
-  ) {
+  if (!hasMongolianCyrillic && !isNumberOnly && !hasRecognizedProgram) {
     return "Уучлаарай, асуултаа монгол кириллээр дахин бичнэ үү.";
   }
 
-  // End the conversation and remove its old context.
   const closingMessages = [
     "баярлалаа",
     "баярлалаа боллоо",
@@ -94,38 +84,24 @@ async function router(userId, text) {
 
   if (closingMessages.includes(msg)) {
     await clearSession(userId);
-
     return "Баярлалаа. Танд амжилт хүсье! 😊";
   }
 
-  // Handle messages containing only a greeting.
-  const greetings = [
-    "сайн байна уу",
-    "сайн уу",
-    "сайн",
-    "мэнд",
-    "мэнд байна уу",
-  ];
-
-  if (greetings.includes(msg)) {
-    // Refresh the session expiration without changing its content.
-    await saveSession(userId, session);
-
-    return `Сайн байна уу! AI Academy Asia-д тавтай морилно уу. 😊
+  // Cheap shortcut: pure greeting, nothing else in the message.
+  // Everything else (including "greeting + question") goes to the AI.
+  if (GREETING_ONLY_REGEX.test(msg)) {
+    const reply = `Сайн байна уу! AI Academy Asia-д тавтай морилно уу. 😊
 
 Та аль сургалтын хөтөлбөрийн талаар мэдээлэл авахыг хүсэж байна вэ?`;
+
+    pushHistory(session, message, reply);
+    await saveSession(userId, session);
+    return reply;
   }
 
-  /**
-   * Update selectedProgram only when exactly one program is mentioned.
-   *
-   * If multiple programs are mentioned, the user may be comparing them.
-   * In that case, we should not randomly select one.
-   */
   if (detectedPrograms.length === 1) {
     const selectedProgram = detectedPrograms[0];
 
-    // Clear topic history when the user changes to another program.
     if (
       session.selectedProgram &&
       session.selectedProgram !== selectedProgram.id
@@ -137,19 +113,12 @@ async function router(userId, text) {
     session.selectedProgram = selectedProgram.id;
   }
 
-  /**
-   * When multiple programs are mentioned, remember them temporarily
-   * for the AI to understand that this is likely a comparison.
-   */
   if (detectedPrograms.length > 1) {
-    session.mentionedPrograms = detectedPrograms.map(
-      (program) => program.id
-    );
+    session.mentionedPrograms = detectedPrograms.map((p) => p.id);
   } else {
     session.mentionedPrograms = [];
   }
 
-  // Handle only explicit requests to speak with a real person.
   const wantsHuman =
     msg.includes("хүнтэй ярих") ||
     msg.includes("зөвлөхтэй ярих") ||
@@ -160,23 +129,22 @@ async function router(userId, text) {
 
   if (wantsHuman) {
     session.lastTopic = "human_support";
-
-    if (!session.answered.includes("human_support")) {
-      session.answered.push("human_support");
+    if (!session.answered?.includes("human_support")) {
+      session.answered = [...(session.answered || []), "human_support"];
     }
 
-    await saveSession(userId, session);
+    const reply = `Манай элсэлтийн зөвлөхтэй ${knowledge.contact.phone} дугаараар холбогдоно уу.`;
 
-    return `Манай элсэлтийн зөвлөхтэй ${knowledge.contact.phone} дугаараар холбогдоно уу.`;
+    pushHistory(session, message, reply);
+    await saveSession(userId, session);
+    return reply;
   }
 
-  // Save the detected program before calling the AI.
-  await saveSession(userId, session);
-
-  // The third parameter will be used after we update ai.js.
+  // Everything else — including greeting+question combos — goes to Gemini,
+  // which now receives the real conversation history via session.history.
   const reply = await aiHandler(message, knowledge, session);
 
-  // Refresh the one-hour Redis expiration after the response.
+  pushHistory(session, message, reply);
   await saveSession(userId, session);
 
   return reply;
