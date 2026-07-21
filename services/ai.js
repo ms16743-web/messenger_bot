@@ -1,10 +1,3 @@
-/**
- * Gemini AI service for AI Academy Asia Messenger chatbot.
- */
-
-// Node 18+ has fetch built in globally. If Render's runtime is older,
-// or the global isn't available for any reason, fall back to node-fetch
-// so this never silently breaks.
 const fetchFn =
   typeof fetch === "function" ? fetch : require("node-fetch");
 
@@ -143,10 +136,6 @@ function buildContents(session, text) {
   ];
 }
 
-/**
- * Calls Gemini, retrying once after a short delay if the model is
- * temporarily overloaded (503). Most 503s clear up within a second or two.
- */
 async function callGemini(url, apiKey, requestBody, attempt = 1) {
   const response = await fetchFn(url, {
     method: "POST",
@@ -175,7 +164,7 @@ async function aiHandler(text, knowledge, session = {}) {
     console.error("❌ GEMINI_API_KEY is missing from environment variables.");
     return (
       knowledge.fallback ||
-      "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна."
+      "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай."
     );
   }
 
@@ -210,7 +199,7 @@ async function aiHandler(text, knowledge, session = {}) {
 
       return (
         knowledge.fallback ||
-        "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна."
+        "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай."
       );
     }
 
@@ -228,7 +217,7 @@ async function aiHandler(text, knowledge, session = {}) {
       console.error("❌ Gemini returned no text:", JSON.stringify(data));
       return (
         knowledge.fallback ||
-        "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна."
+        "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай."
       );
     }
 
@@ -237,7 +226,7 @@ async function aiHandler(text, knowledge, session = {}) {
     console.error("❌ Gemini request failed:", error.message);
     return (
       knowledge.fallback ||
-      "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна."
+      "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай."
     );
   }
 }

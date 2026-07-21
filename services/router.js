@@ -72,15 +72,8 @@ async function router(userId, text) {
     return "Уучлаарай, асуултаа монгол кириллээр дахин бичнэ үү.";
   }
 
-  const closingMessages = [
-    "баярлалаа",
-    "баярлалаа боллоо",
-    "за баярлалаа",
-    "үгүй баярлалаа",
-    "боллоо",
-    "ойлголоо",
-    "за ойлголоо",
-  ];
+  const CLOSING_REGEX =
+  /^(за\s+)?(баярлалаа|боллоо|ойлголоо)(\s+боллоо)?[\s!.,😊🙏👍]*$/i;
 
   if (closingMessages.includes(msg)) {
     await clearSession(userId);
