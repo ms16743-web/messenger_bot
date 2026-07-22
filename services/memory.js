@@ -19,28 +19,31 @@ function getSessionKey(senderId) {
   return `bot:user:${senderId}:session`;
 }
 
+function defaultSession() {
+  return {
+    selectedProgram: null,
+    lastTopic: null,
+    answered: [],
+    history: [],
+    phone: null,
+    phoneRequested: false,
+    awaitingPhoneForClose: false,
+  };
+}
+
 async function getSession(senderId) {
   const key = getSessionKey(senderId);
   const savedSession = await redisClient.get(key);
 
   if (!savedSession) {
-    return {
-      selectedProgram: null,
-      lastTopic: null,
-      answered: [],
-    };
+    return defaultSession();
   }
 
   try {
-    return JSON.parse(savedSession);
+    return { ...defaultSession(), ...JSON.parse(savedSession) };
   } catch (error) {
     console.error("Session parsing error:", error);
-
-    return {
-      selectedProgram: null,
-      lastTopic: null,
-      answered: [],
-    };
+    return defaultSession();
   }
 }
 
@@ -57,10 +60,44 @@ async function clearSession(senderId) {
   await redisClient.del(key);
 }
 
+/**
+ * Leads are stored separately from the session, in a permanent Redis
+ * list (no expiration), so a customer's contact info survives even
+ * after their 1-hour session expires or gets cleared.
+ */
+const LEADS_KEY = "bot:leads";
+
+async function saveLead(senderId, phone, selectedProgram) {
+  const lead = {
+    senderId,
+    phone,
+    selectedProgram: selectedProgram || null,
+    capturedAt: new Date().toISOString(),
+  };
+
+  await redisClient.rPush(LEADS_KEY, JSON.stringify(lead));
+  console.log("📞 New lead captured:", JSON.stringify(lead));
+}
+
+async function getLeads() {
+  const raw = await redisClient.lRange(LEADS_KEY, 0, -1);
+  return raw
+    .map((entry) => {
+      try {
+        return JSON.parse(entry);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
 module.exports = {
   redisClient,
   connectRedis,
   getSession,
   saveSession,
   clearSession,
+  saveLead,
+  getLeads,
 };
