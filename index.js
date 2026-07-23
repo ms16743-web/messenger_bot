@@ -4,6 +4,7 @@ const express = require("express");
 const axios = require("axios");
 const { router } = require("./services/router");
 const { connectRedis } = require("./services/memory");
+const { checkDb } = require("./services/db");
 
 const app = express();
 
@@ -167,6 +168,16 @@ async function startServer() {
   try {
     await connectRedis();
     console.log("✅ Redis connected successfully.");
+
+    try {
+      await checkDb();
+      console.log("✅ Postgres connected successfully.");
+    } catch (error) {
+      console.error(
+        "⚠️ Postgres not reachable, knowledge will fall back to file:",
+        error.message
+      );
+    }
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

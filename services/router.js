@@ -80,7 +80,7 @@ const CLOSING_MESSAGES = [
 async function router(userId, text) {
   const message = text.trim();
   const msg = normalizeText(message);
-  const knowledge = getKnowledge();
+  const knowledge = await getKnowledge();
 
   const session = await getSession(userId);
 
