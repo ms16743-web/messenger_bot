@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "setup:knowledge": "node scripts/setup-knowledge.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node tests/knowledge.test.js"
   },
   "keywords": [],
   "author": "",
