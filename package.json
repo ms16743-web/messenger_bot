@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "setup:knowledge": "node scripts/setup-knowledge.js",
+    "seed:sql": "node scripts/generate-seed-sql.js",
     "test": "node tests/knowledge.test.js"
   },
   "keywords": [],

@@ -1,0 +1,163 @@
+-- Initial knowledge data for AI Academy Asia messenger bot.
+-- Generated from knowledge/academy.json by scripts/generate-seed-sql.js.
+-- Apply with: psql "<connection>" -f scripts/init-knowledge.sql
+
+CREATE TABLE IF NOT EXISTS knowledge (
+  id         INTEGER PRIMARY KEY DEFAULT 1,
+  data       JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT knowledge_single_row CHECK (id = 1)
+);
+
+INSERT INTO knowledge (id, data, updated_at)
+VALUES (1, '{
+  "name": "AI Academy Asia",
+  "mission": "Төсөлд суурилсан сургалтаар дамжуулан хүүхэд, насанд хүрэгчид болон байгууллагуудад хиймэл оюуны бодит ур чадварыг эзэмшүүлэх.",
+  "location": "ITC Tower, 11 давхар",
+  "website": "https://ai-academy.asia",
+  "contact": {
+    "phone": "+976 75051055",
+    "email": "info@ai-academy.asia"
+  },
+  "programs": [
+    {
+      "id": "junior_ai_engineer",
+      "name": "Junior AI Engineer болох",
+      "aliases": [
+        "junior",
+        "junior ai",
+        "junior ai engineer",
+        "жуниор",
+        "жуниор ай",
+        "хүүхдийн сургалт",
+        "хүүхдийн хөтөлбөр",
+        "өсвөр үеийн хөтөлбөр"
+      ],
+      "category": "Хүүхэд, өсвөр үеийн хөтөлбөр",
+      "age_range": "10–18 нас",
+      "description": "Сурагчид Teachable Machine болон Google AI Studio зэрэг no-code хэрэгслийг ашиглан хиймэл оюун хэрхэн ажилладгийг судална. Scratch ашиглан програмчлалын суурь ойлголт эзэмшиж, багшийн чиглүүлэгтэйгээр өөрсдийн AI төслийг бүтээнэ.",
+      "skills": [
+        "AI сэтгэлгээ",
+        "No-code AI хэрэгслүүд",
+        "Teachable Machine",
+        "Google AI Studio",
+        "Scratch програмчлал",
+        "AI төсөл бүтээх"
+      ],
+      "price": "2,000 ам.доллар",
+      "price_note": "Тухайн өдрийн ханшаар тооцно.",
+      "duration": "2026.08.03–2026.08.24, нийт 3 долоо хоног",
+      "schedule": "Хичээлийн нарийн хуваарийг академиас баталгаажуулна.",
+      "format": "Танхимаар",
+      "certificate": "Сургалтын төгсгөлд Demo Day арга хэмжээнд төслөө танилцуулж, AIAA Junior Member батламж авна."
+    },
+    {
+      "id": "ai_101_online",
+      "name": "AI 101 Онлайн сургалт",
+      "aliases": [
+        "ai 101",
+        "ai101",
+        "ай 101",
+        "ай101",
+        "онлайн сургалт",
+        "ai 101 онлайн",
+        "насанд хүрэгчдийн онлайн сургалт"
+      ],
+      "category": "Насанд хүрэгчдийн хөтөлбөр",
+      "age_range": "Насанд хүрэгчид",
+      "description": "Суралцагчид Python програмчлалын суурь, өгөгдөл боловсруулах, машин сургалт, гүн сургалт болон нейрон сүлжээний үндсэн ойлголтуудыг судална.",
+      "skills": [
+        "Python програмчлал",
+        "Өгөгдөл боловсруулах",
+        "Машин сургалт",
+        "Гүн сургалт",
+        "Нейрон сүлжээ",
+        "Computer Vision",
+        "Natural Language Processing"
+      ],
+      "price": "1,000,000₮",
+      "price_note": "Нэг удаагийн төлбөр.",
+      "duration": "2026.07.20–2026.08.14",
+      "schedule": "7 хоногт 3 удаа",
+      "format": "Онлайнаар",
+      "certificate": "Сертификатын дэлгэрэнгүй мэдээллийг академийн зөвлөхөөс авна."
+    },
+    {
+      "id": "ai_engineer",
+      "name": "Олон улсад өрсөлдөх чадвартай AI Engineer болох",
+      "aliases": [
+        "ai engineer",
+        "ай инженер",
+        "ai engineer сургалт",
+        "7 сарын сургалт",
+        "долоон сарын сургалт",
+        "насанд хүрэгчдийн төсөлт сургалт"
+      ],
+      "category": "Насанд хүрэгчдийн төсөлт сургалт",
+      "age_range": "Насанд хүрэгчид",
+      "description": "Суралцагчид өөрийн AI төслийг санаанаас нь эхлэн бүрэн хэрэгжүүлж, бодит туршлага хуримтлуулна.",
+      "skills": [
+        "Python програмчлал",
+        "Өгөгдөл боловсруулах",
+        "Машин сургалт",
+        "Гүн сургалт",
+        "Нейрон сүлжээ",
+        "Computer Vision",
+        "Natural Language Processing",
+        "AI Engineering",
+        "AI загвар нэвтрүүлэлт",
+        "Төгсөлтийн төсөл"
+      ],
+      "price": "17,900,000₮",
+      "price_note": "Нэг удаагийн төлбөр.",
+      "duration": "2026.08.17–2027.03.17, нийт 7 сар",
+      "schedule": "7 хоногт 3 удаа",
+      "format": "Танхимаар",
+      "certificate": "Сургалтыг амжилттай төгссөнөөр олон улсад магадлан итгэмжлэгдсэн сертификат олгоно."
+    },
+    {
+      "id": "corporate_ai",
+      "name": "Байгууллага болон удирдлагуудад зориулсан AI сургалт",
+      "aliases": [
+        "corporate ai",
+        "байгууллагын сургалт",
+        "байгууллагын ai сургалт",
+        "удирдлагын сургалт",
+        "компанийн сургалт",
+        "байгууллага болон удирдлагуудад зориулсан сургалт"
+      ],
+      "category": "Байгууллагын сургалт",
+      "age_range": "Байгууллагын удирдлага болон багууд",
+      "description": "AI стратеги, AI засаглал, ажлын урсгал автоматжуулалт, Vibe Coding, AI Agents болон no-code прототип бүтээх чиглэлд төвлөрнө.",
+      "skills": [
+        "AI стратеги",
+        "AI засаглал",
+        "Бизнес дэх AI хэрэглээ",
+        "Ажлын урсгал автоматжуулалт",
+        "Vibe Coding",
+        "AI Agents",
+        "No-code прототип бүтээх"
+      ],
+      "price": "1,600 ам.доллар",
+      "price_note": "Тухайн өдрийн ханшаар тооцно.",
+      "duration": "2 сар",
+      "schedule": "7 хоногт 2 удаа",
+      "format": "Танхимаар эсвэл байгууллагын хэрэгцээнд тохируулан",
+      "certificate": "Сертификатын дэлгэрэнгүй мэдээллийг академийн зөвлөхөөс авна."
+    }
+  ],
+  "learning_style": [
+    "Төсөлд суурилсан сургалт",
+    "Бодит AI төсөл",
+    "Практик дадлага",
+    "Багшийн чиглүүлэг"
+  ],
+  "general_certificate_information": "Зарим сургалтыг амжилттай төгссөнөөр олон улсад магадлан итгэмжлэгдсэн сертификат олгоно.",
+  "registration": {
+    "instruction": "Бүртгэл болон хувь хүнд тохирсон сургалтын зөвлөгөөг элсэлтийн зөвлөх өгнө.",
+    "phone": "+976 75051055"
+  },
+  "fallback": "Одоогоор энэ мэдээлэл бүрэн ороогүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай."
+}'::jsonb, now())
+ON CONFLICT (id) DO UPDATE
+  SET data = EXCLUDED.data, updated_at = now();
