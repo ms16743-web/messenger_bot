@@ -25,9 +25,16 @@ function defaultSession() {
     lastTopic: null,
     answered: [],
     history: [],
+
     phone: null,
-    phoneRequested: false,
-    awaitingPhoneForClose: false,
+
+    // True after Gemini asks:
+    // “Та бүртгүүлэх хүсэлтэй байна уу?”
+    awaitingRegistrationConfirmation: false,
+
+    // True after the customer answers yes
+    // and the bot asks for their phone number.
+    awaitingPhone: false,
   };
 }
 

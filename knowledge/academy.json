@@ -7,132 +7,198 @@
     "phone": "+976 75051055",
     "email": "info@ai-academy.asia"
   },
+  "office_hours": {
+    "timezone": "Asia/Ulaanbaatar",
+    "working_days": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday"
+    ],
+    "working_hours": {
+      "opens": "09:00",
+      "closes": "18:00"
+    },
+    "lunch_break": {
+      "starts": "12:00",
+      "ends": "13:00"
+    },
+
+    "note": "Lunch break is from 12:00 to 13:00."
+  }
+,
   "programs": [
     {
       "id": "junior_ai_engineer",
       "name": "Junior AI Engineer болох",
-       "aliases": [
-    "junior",
-    "junior ai",
-    "junior ai engineer",
-    "жуниор",
-    "жуниор ай",
-    "хүүхдийн сургалт",
-    "хүүхдийн хөтөлбөр",
-    "өсвөр үеийн хөтөлбөр"
-  ],
+      "aliases": [
+        "junior", "junior ai", "junior ai engineer", "жуниор", "жуниор ай",
+        "хүүхдийн сургалт", "хүүхдийн хөтөлбөр", "өсвөр үеийн хөтөлбөр",
+        "ai kids", "ai kids and teens", "ai kids & teens", "kids and teens"
+      ],
       "category": "Хүүхэд, өсвөр үеийн хөтөлбөр",
       "age_range": "10–18 нас",
-      "description": "Сурагчид Teachable Machine болон Google AI Studio зэрэг no-code хэрэгслийг ашиглан хиймэл оюун хэрхэн ажилладгийг судална. Scratch ашиглан програмчлалын суурь ойлголт эзэмшиж, багшийн чиглүүлэгтэйгээр өөрсдийн AI төслийг бүтээнэ.",
+      "age_groups": [
+        {
+          "range": "10–13 нас",
+          "track_name": "Cadet Track (Crew 01)",
+          "how_they_learn": "Visual + no-code эхэлж — Scratch, Teachable Machine, Google AI Studio ашиглан AI хэрхэн ажилладгийг харж, дараа нь өөрсдөө бүтээнэ. Код бичихээс илүү ойлголт тогтооход анхаарна.",
+          "level": "Beginner-friendly"
+        },
+        {
+          "range": "14–18 нас",
+          "track_name": "Pilot Track (Crew 02)",
+          "how_they_learn": "Бодит Python, бодит ML. Python кодыг эхнээс нь бичиж, scikit-learn ашиглан ML загвар сургаж, Pandas ашиглан өгөгдөл цэвэрлэнэ. Онол + бодит бүтээл хослуулна.",
+          "level": "Industry-stack"
+    }],
+      "description": "Хүүхэд, өсвөр үеийнхэнд зориулсан олон улсын хөтөлбөр (мөн 'AI Kids & Teens' нэрээр танигддаг). Хоёр Crew, хоёр төрлийн track — насанд тохирсон crew-д Cadet тус бүр нэгддэг. 10 настай хүүхдэд Scratch-ээр AI maze game бүтээх нь зөв, 17 настай суралцагчид Python дээр ML classifier бичих нь зөв — арга, темп нь бүлэг тус бүрт өөр өөр.",
       "skills": [
-        "AI сэтгэлгээ",
-        "No-code AI хэрэгслүүд",
-        "Teachable Machine",
-        "Google AI Studio",
-        "Scratch програмчлал",
-        "AI төсөл бүтээх"
+        "AI сэтгэлгээ", "AI-ийн суурь ойлголт", "Програмчлал",
+        "No-code AI хэрэгслүүд", "Teachable Machine", "Google AI Studio",
+        "Scratch програмчлал", "Вэб хөгжүүлэлтийн үндэс", "AI төсөл бүтээх"
       ],
-      "price": "2,000 ам.доллар",
+      "price": "1,560,000₮",
       "price_note": "Тухайн өдрийн ханшаар тооцно.",
       "duration": "2026.08.03–2026.08.24, нийт 3 долоо хоног",
       "schedule": "Хичээлийн нарийн хуваарийг академиас баталгаажуулна.",
       "format": "Танхимаар",
-      "certificate": "Сургалтын төгсгөлд Demo Day арга хэмжээнд төслөө танилцуулж, AIAA Junior Member батламж авна."
+      "certificate": "Bootcamp-аа Splashdown (эцсийн Demo Day) хүртэл бүрэн дуусгасан Cadet бүрт AIAA Junior Membership Card гардуулна — холографик, нэр болон хувийн cadet дугаартай. Энэ карт зөвхөн bootcamp-аа дуусгасан cadet-д олгогдоно — худалдаж авах боломжгүй, зөвхөн дуусгаснаар олгогдоно.",
+      "junior_membership_perks": [
+        "Сард 1 удаагийн Junior Meetup — alumni cadet-тай уулзах, AI guest speaker, live Q&A, олон улсын зочдын seminar",
+        "Alumni Telegram community — cadet-уудын хувийн Telegram group",
+        "Эцэг эхэд зориулсан AIAA Parents Telegram channel",
+        "Mentor-уудаас 1-on-1 зөвлөгөө авах боломж",
+        "Дараагийн bootcamp-д хямдрал",
+        "Монголын анхдагч AI cadet community-д үүрд гишүүн болно"
+      ],
+      "bootcamp_journey": {
+        "launch_day_kit": [
+          "Cadet ID Badge + Lanyard (нэр, cadet дугаартай)",
+          "Mission Patches — даалгавар бүрт нэг цуглуулна",
+          "Mission Journal — sketchbook + код тэмдэглэлийн дэвтэр"
+        ],
+        "steps": [
+          "STEP 01: Bootcamp-д бүртгүүлж, Launch Day-гаар эхэлнэ",
+          "10 mission бүрэн дуусгаж, Capstone төсөл бүтээнэ",
+          "STEP 03: Splashdown өдөр Demo хийж, Junior Membership Card + Sticker Pack (mascot, planet лого) гардан авна"
+        ]
+      },
+      "path_forward_after_membership": [
+        "Дараагийн Junior AI Engineer bootcamp-д хямдрал",
+        "Advanced track-д тэргүүн ээлжинд орох боломж",
+        "Splashdown видео авах"
+      ]
     },
     {
       "id": "ai_101_online",
       "name": "AI 101 Онлайн сургалт",
       "aliases": [
-    "ai 101",
-    "ai101",
-    "ай 101",
-    "ай101",
-    "онлайн сургалт",
-    "ai 101 онлайн",
-    "насанд хүрэгчдийн онлайн сургалт"
-  ],
+        "ai 101", "ai101", "ай 101", "ай101", "онлайн сургалт",
+        "ai 101 онлайн", "насанд хүрэгчдийн онлайн сургалт"
+      ],
       "category": "Насанд хүрэгчдийн хөтөлбөр",
       "age_range": "Насанд хүрэгчид",
-      "description": "Суралцагчид Python програмчлалын суурь, өгөгдөл боловсруулах, машин сургалт, гүн сургалт болон нейрон сүлжээний үндсэн ойлголтуудыг судална.",
+      "description": "Claude AI, GenAI-ийн суурь ойлголт, Prompt Engineering, AI Automation болон Capstone Project-оор дамжуулан AI-г бодит ажил, өдөр тутмын хэрэглээнд ур дүнтэй ашиглах ур чадварыг эзэмшинэ.",
       "skills": [
-        "Python програмчлал",
-        "Өгөгдөл боловсруулах",
-        "Машин сургалт",
-        "Гүн сургалт",
-        "Нейрон сүлжээ",
-        "Computer Vision",
-        "Natural Language Processing"
+        "Claude AI", "Prompt Engineering", "GenAI-ийн суурь ойлголт", "AI Automation",
+        "Document Intelligence & Data Analysis", "No-code Automation (n8n)",
+        "Machine Learning үндэс", "Agentic AI & AI Agents"
       ],
       "price": "1,000,000₮",
       "price_note": "Нэг удаагийн төлбөр.",
-      "duration": "2026.07.20–2026.08.14",
-      "schedule": "7 хоногт 3 удаа",
-      "format": "Онлайнаар",
-      "certificate": "Сертификатын дэлгэрэнгүй мэдээллийг академийн зөвлөхөөс авна."
+      "duration": "2026.07.20–2026.08.14, 4 долоо хоног (12 хичээл, 18 академик цаг)",
+      "schedule": "Даваа, Лхагва, Баасан гарагт 07:30–09:00 (Онлайнаар).",
+      "schedule_note": "Хичээл бүр Google Classroom-д бичигдэж хадгалагдана — шууд оролцоогүй ч хүссэн үедээ дахин үзэх боломжтой. Хөтөлбөр дууссаны дараа ч материал хадгалагдана.",
+      "platform": "Google Meet + Google Classroom",
+      "format": "100% Online",
+      "target_audience": [
+        "AI ур чадвар нэмэхийг хүсдэг ажилтнууд",
+        "Гадаадад амьдардаг, цагийн бүс өөр суралцагчид",
+        "AI-г 0-ээс сурч эхлэх хүсэлтэй хүмүүс",
+        "Бизнестээ AI шийдэл нэвтрүүлэхийг хүсдэг бизнес эрхлэгчид"
+      ],
+      "prerequisites": "Анхан шатны мэдлэг шаардлагагүй. Python суурийг хичээл 03-аас эхлэн зааж эхэлдэг тул 0-ээс эхэлж болно.",
+      "certificate": "Хөтөлбөрийн төгсгөлд албан ёсны гэрчилгээ ОЛГОГДОХГҮЙ. Оронд нь суралцагч өөрийн бодит Capstone AI төслөө бүтээж, портфолио болгон эзэмшинэ. Мөн 12 хичээлийн бичлэг, материал Google Classroom дээр байнга хадгалагдаж үлдэнэ.",
+      "outcomes": [
+        "Бодит Capstone AI төсөл (портфолио)",
+        "Vibe Coding ур чадвар (код бичих гүн мэдлэггүйгээр AI ашиглан вэб, апп, агент бүтээх)",
+        "12 хичээлийн бичлэг, материал — байнгын хандалттай",
+        "AI ажлын урсгалд ашиглах бодит чадвар (Prompt Engineering, no-code automation, agents)"
+      ]
     },
     {
       "id": "ai_engineer",
       "name": "Олон улсад өрсөлдөх чадвартай AI Engineer болох",
-        "aliases": [
-    "ai engineer",
-    "ай инженер",
-    "ai engineer сургалт",
-    "7 сарын сургалт",
-    "долоон сарын сургалт",
-    "насанд хүрэгчдийн төсөлт сургалт"
-  ],
+      "aliases": [
+        "ai engineer", "ай инженер", "ai engineer сургалт",
+        "7 сарын сургалт", "долоон сарын сургалт", "насанд хүрэгчдийн төсөлт сургалт"
+      ],
       "category": "Насанд хүрэгчдийн төсөлт сургалт",
       "age_range": "Насанд хүрэгчид",
       "description": "Суралцагчид өөрийн AI төслийг санаанаас нь эхлэн бүрэн хэрэгжүүлж, бодит туршлага хуримтлуулна.",
       "skills": [
-        "Python програмчлал",
-        "Өгөгдөл боловсруулах",
-        "Машин сургалт",
-        "Гүн сургалт",
-        "Нейрон сүлжээ",
-        "Computer Vision",
-        "Natural Language Processing",
-        "AI Engineering",
-        "AI загвар нэвтрүүлэлт",
-        "Төгсөлтийн төсөл"
+        "Python програмчлал", "Өгөгдөл боловсруулах", "Машин сургалт",
+        "Гүн сургалт", "Нейрон сүлжээ", "Computer Vision",
+        "Natural Language Processing", "AI Engineering",
+        "AI загвар нэвтрүүлэлт", "Төгсөлтийн төсөл"
       ],
       "price": "17,900,000₮",
       "price_note": "Нэг удаагийн төлбөр.",
       "duration": "2026.08.17–2027.03.17, нийт 7 сар",
       "schedule": "7 хоногт 3 удаа",
       "format": "Танхимаар",
-      "certificate": "Сургалтыг амжилттай төгссөнөөр олон улсад магадлан итгэмжлэгдсэн сертификат олгоно."
+      "certificate": "Сургалтыг амжилттай төгссөнөөр олон улсад магадлан итгэмжлэгдсэн сертификат олгоно. Мөн зөвхөн энэ хөтөлбөрөөр төгссөн суралцагч AIAA Inner Circle гишүүнчлэлийн карт авна — энэ бол зөвхөн гэрчилгээ биш, амьдралын турш үргэлжлэх дотоод тойрог (оффис, сүлжээ, ажлын боломжид нэвтрэх түлхүүр).",
+      "inner_circle_membership_perks": [
+        "AIAA оффис ашиглах эрх (09:00–20:00, өдрүүд баталгаажуулах шаардлагатай)",
+        "GPU тооцоолуурт машин, уулзалтын өрөө ашиглах боломж",
+        "Гадаад багш нарын (Esposito, Warnecke, Genatowski зэрэг) онлайн лекц",
+        "Бусад AIAA сургалтад (AI4CorpLeaders, University Prep, AI 101 гэх мэт) хямдрал",
+        "AIAA арга хэмжээнд (конференц, хакатон) тэргүүн ээлжийн суудал",
+        "Хувийн Discord — networking, faculty Q&A, ажлын зар, амжилт хуваалцах сувгууд",
+        "AIAA Industry Mixer — Монголын AI салбарын дотоод сүлжээнд холбогдох",
+        "Хамтрагч компаниудад тэргүүн ээлжинд нэр дэвших, эрт мэдээлэл, ярилцлагын бэлтгэл, цалингийн зөвлөгөө",
+        "AIAA CEO-с хувийн Recommendation Letter авах боломж"
+      ]
     },
     {
       "id": "corporate_ai",
-      "name": "Байгууллага болон удирдлагуудад зориулсан AI сургалт",
-        "aliases": [
-    "corporate ai",
-    "байгууллагын сургалт",
-    "байгууллагын ai сургалт",
-    "удирдлагын сургалт",
-    "компанийн сургалт",
-    "байгууллага болон удирдлагуудад зориулсан сургалт"
-  ],
+      "name": "AI4CorpLeaders — Корпоратив удирдлагуудад зориулсан AI хөтөлбөр",
+      "aliases": [
+        "corporate ai", "байгууллагын сургалт", "байгууллагын ai сургалт",
+        "удирдлагын сургалт", "компанийн сургалт",
+        "байгууллага болон удирдлагуудад зориулсан сургалт", "ai4corpleaders"
+      ],
       "category": "Байгууллагын сургалт",
       "age_range": "Байгууллагын удирдлага болон багууд",
-      "description": "AI стратеги, AI засаглал, ажлын урсгал автоматжуулалт, Vibe Coding, AI Agents болон no-code прототип бүтээх чиглэлд төвлөрнө.",
+      "description": "AI4CorpLeaders бол онолын биш, үйл ажиллагаанд суурилсан интенсив хөтөлбөр. Удирдагчид хиймэл оюун ухааныг өөрийн бизнес, удирдлагын шийдвэрт нэгтгэхийг сурч, хичээл бүрт ажил дээрээ хэрэглэх ур чадвар олж авна. Хөтөлбөрийн төгсгөлд компанийнхаа бодит асуудлыг шийдэх Capstone Project бүтээнэ.",
       "skills": [
-        "AI стратеги",
-        "AI засаглал",
-        "Бизнес дэх AI хэрэглээ",
-        "Ажлын урсгал автоматжуулалт",
-        "Vibe Coding",
-        "AI Agents",
-        "No-code прототип бүтээх"
+        "AI стратеги", "Prompt Engineering", "GenAI & Agentic AI",
+        "Machine Learning үндэс", "API ба AI Model ойлголт",
+        "Workflow Automation", "No-code Automation (n8n)",
+        "AI Agent хөгжүүлэлт", "AI for Social Media"
       ],
       "price": "1,600 ам.доллар",
       "price_note": "Тухайн өдрийн ханшаар тооцно.",
-      "duration": "2 сар",
-      "schedule": "7 хоногт 2 удаа",
-      "format": "Танхимаар эсвэл байгууллагын хэрэгцээнд тохируулан",
-      "certificate": "Сертификатын дэлгэрэнгүй мэдээллийг академийн зөвлөхөөс авна."
-    }
+      "duration": "2026.08.06–2026.10.04, 8 долоо хоног, 16 хичээл, нийт 32 академик цаг (90 минут тутамд)",
+      "schedule": "Мягмар, Пүрэв гарагт 18:30–20:00 (Танхимаар).",
+      "format": "Танхимаар явагдах Live хичээл + Capstone Project",
+      "cohort_note": "Зөвхөн 1 cohort — суудлын тоо хязгаарлагдмал.",
+      "curriculum_summary": [
+        "AI Intro, GenAI & Agentic AI, Machine Learning",
+        "Prompt Engineering",
+        "Creativity AI: Image, Audio, Video GenAI",
+        "API ба AI Model ойлголт",
+        "AI-г ажилдаа нэгтгэх, Workflow Automation",
+        "AI for Brainstorming, Research & Insights",
+        "No-Code Automation, Bot, AI Agent хөгжүүлэлт",
+        "AI for Social Media"
+      ],
+      "capstone_project": "Оролцогч эхнээс нь өөрийн байгууллагын бодит асуудлыг сонгож, 8 долоо хоногийн турш AI шийдэл болгон хөгжүүлнэ. Эцсийн өдөр (Demo Day) ажиллагаатай систем, амьд танилцуулга хийнэ."
+       }
+  
   ],
   "learning_style": [
     "Төсөлд суурилсан сургалт",
@@ -140,7 +206,7 @@
     "Практик дадлага",
     "Багшийн чиглүүлэг"
   ],
-  "general_certificate_information": "Зарим сургалтыг амжилттай төгссөнөөр олон улсад магадлан итгэмжлэгдсэн сертификат олгоно.",
+  "general_certificate_information": "Хөтөлбөр бүрийн гэрчилгээ, портфолио олгох нөхцөл ялгаатай — тухайн хөтөлбөрийн certificate талбарыг харна уу.",
   "registration": {
     "instruction": "Бүртгэл болон хувь хүнд тохирсон сургалтын зөвлөгөөг элсэлтийн зөвлөх өгнө.",
     "phone": "+976 75051055"

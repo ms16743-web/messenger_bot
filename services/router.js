@@ -61,9 +61,6 @@ function extractPhoneNumber(message) {
   return digitsOnly.length === 8 ? digitsOnly : null;
 }
 
-// Only matches messages that are ENTIRELY a greeting, nothing else.
-// Anything longer, or a greeting combined with a question, falls
-// through to the AI, which handles that case naturally.
 const GREETING_ONLY_REGEX =
   /^(сайн байна уу|сайн уу|сайн|мэнд байна уу|мэнд|hi|hello|hey)[\s!.,😊🙂👋]*$/i;
 
@@ -137,13 +134,10 @@ async function router(userId, text) {
       return reply;
     }
 
-    // Already asked once — don't nag a second time, just close politely.
     await clearSession(userId);
     return "Баярлалаа. Танд амжилт хүсье! 😊";
   }
 
-  // Cheap shortcut: pure greeting, nothing else in the message.
-  // Everything else (including "greeting + question") goes to the AI.
   if (GREETING_ONLY_REGEX.test(msg)) {
     const reply = `Сайн байна уу! AI Academy Asia-д тавтай морилно уу. 😊
 
@@ -197,16 +191,13 @@ async function router(userId, text) {
       session.answered = [...(session.answered || []), "human_support"];
     }
 
-    const reply = `Мэдээж! Манай элсэлтийн зөвлөхтэй ${knowledge.contact.phone} дугаараар холбогдож болно. Эсвэл өөрийн утасны дугаараа үлдээвэл манай зөвлөх танд эргэж холбогдох болно 📞`;
+    const reply = `Мэдээж! Манай элсэлтийн зөвлөхтэй ${knowledge.contact.phone} дугаараар холбогдож болно. Эсвэл өөрийн утасны дугаараа 📞 үлдээвэл манай зөвлөх танд эргэж холбогдох болно`;
 
     pushHistory(session, message, reply);
     await saveSession(userId, session);
     return reply;
   }
 
-  // Everything else — including greeting+question combos — goes to Gemini,
-  // which now receives the real conversation history via session.history,
-  // and may itself append a soft phone-number CTA after detailed answers.
   const reply = await aiHandler(message, knowledge, session);
 
   pushHistory(session, message, reply);
