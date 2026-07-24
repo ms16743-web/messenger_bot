@@ -167,7 +167,6 @@ async function sendMessage(psid, text) {
 async function startServer() {
   try {
     await connectRedis();
-    console.log("✅ Redis connected successfully.");
 
     try {
       await checkDb();
