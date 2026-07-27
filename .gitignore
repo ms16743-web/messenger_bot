@@ -70,6 +70,13 @@ web_modules/
 .env.*
 !.env.example
 
+# Secrets (SSH keys, credentials)
+.secrets/
+*.pem
+
+# Internal deployment notes (not for git)
+DEPLOYMENT.md
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
