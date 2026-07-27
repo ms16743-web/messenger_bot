@@ -38,11 +38,6 @@ function detectPrograms(message, knowledge) {
   return detectedPrograms;
 }
 
-/**
- * Appends this turn to the session's short-term history and
- * trims it so the Gemini request doesn't grow unbounded.
- * Keeps the last 5 exchanges (10 entries: user+model pairs).
- */
 function pushHistory(session, userText, botText) {
   session.history = Array.isArray(session.history) ? session.history : [];
   session.history.push({ role: "user", text: userText });
@@ -50,8 +45,6 @@ function pushHistory(session, userText, botText) {
   session.history = session.history.slice(-10);
 }
 
-// Mongolian mobile numbers are 8 digits. Matches "99112233", "9911-2233",
-// "+976 99112233", etc. — anywhere inside a longer message.
 const PHONE_REGEX = /\b\d{2}[\s-]?\d{2}[\s-]?\d{2}[\s-]?\d{2}\b/;
 
 function extractPhoneNumber(message) {
@@ -61,23 +54,53 @@ function extractPhoneNumber(message) {
   return digitsOnly.length === 8 ? digitsOnly : null;
 }
 
-// Only matches messages that are ENTIRELY a greeting, nothing else.
-// Anything longer, or a greeting combined with a question, falls
-// through to the AI, which handles that case naturally.
-// Includes common romanized ("Mongolian-English") typing of greetings,
-// e.g. "sainuu", "sn bnu", since customers often type this way.
-const GREETING_ONLY_REGEX =
-  /^(сайн байна уу|сайн уу|сайн|мэнд байна уу|мэнд|hi|hello|hey|sain baina uu|sainbaina uu|sain bna uu|sainbna uu|sain bna|sain uu|sainuu|sn bnu|snbnu|snuu|snu|sbu|menda|mend)[\s!.,😊🙂👋]*$/i;
-
-const CLOSING_MESSAGES = [
-  "баярлалаа",
-  "баярлалаа боллоо",
-  "за баярлалаа",
-  "үгүй баярлалаа",
-  "боллоо",
-  "ойлголоо",
-  "за ойлголоо",
+function collapseRepeatedLetters(str) {
+  return str.replace(/([a-zа-яё])\1+/gi, "$1");
+}
+const GREETING_ONLY_LIST = [
+  "сайн байна уу", "сайн уу", "сайн", "сайна", "сайн даа",
+  "мэнд байна уу", "мэнд", "мэндлээ", "менде",
+  "hi", "hello", "hey",
+  "sain baina uu", "sainbaina uu", "sain bna uu", "sainbna uu",
+  "sain bna", "sainbna", "sain uu", "sainuu", "sain bn", "sainbn",
+  "sain b", "sainb", "sain daa", "saina daa",
+  "sain bnu", "sainbnu",
+  "sn bnu", "snbnu", "sn bna", "snbna", "sn uu", "snuu",
+  "sn u", "snu", "sn", "sbu", "sb",
+  "menda", "mend", "mendlee",
 ];
+
+const GREETING_ONLY_SET = new Set(
+  GREETING_ONLY_LIST.map(collapseRepeatedLetters)
+);
+
+function matchesGreetingOnly(normalizedMsg) {
+  return GREETING_ONLY_SET.has(collapseRepeatedLetters(normalizedMsg));
+}
+
+const CLOSING_PATTERNS = [
+  /^баярлал(аа|ая)(\s.*)?$/,
+  /^за\s*баярлал(аа|ая)(\s.*)?$/,
+  /^үгүй\s*баярлал(аа|ая)(\s.*)?$/,
+  /^боллоо$/,
+  /^ойлголоо$/,
+  /^за\s*ойлголоо$/,
+  /^(za\s*)?bayarlal(aa|ya)(\s.*)?$/,
+  /^(za\s*)?oilgoloo$/,
+  /^thanks?(\syou)?$/,
+];
+
+function isClosingMessage(normalizedMsg) {
+  return CLOSING_PATTERNS.some((pattern) => pattern.test(normalizedMsg));
+}
+
+const AFFIRMATION_ONLY_REGEX =
+  /^(тийм|тиймээ|тэгье|за тэгье|за|за яахав|болно|за болно|ок|tiim|tiimee|za|bolno|ok|yes)$/;
+
+const REGISTRATION_QUESTION_MARKER = "бүртгүүлэх хүсэлтэй байна уу";
+
+const AFFIRMATION_REPLY =
+  "Маш сайн байна! Утасны дугаараа бичээд илгээгээрэй, манай элсэлтийн зөвлөх тантай холбогдох болно 📞";
 
 async function router(userId, text) {
   const message = text.trim();
@@ -86,8 +109,6 @@ async function router(userId, text) {
 
   const session = await getSession(userId);
 
-  // Check for a phone number anywhere in the message, before any other
-  // logic — a customer might just type it in, with or without extra text.
   const capturedPhone = extractPhoneNumber(message);
 
   if (capturedPhone && !session.phone) {
@@ -106,40 +127,48 @@ async function router(userId, text) {
       await clearSession(userId);
     } else {
       session.awaitingPhoneForClose = false;
+      session.awaitingRegistrationConfirmation = false;
+      session.awaitingPhone = false;
       await saveSession(userId, session);
     }
 
     return reply;
   }
 
+  if (session.awaitingRegistrationConfirmation && AFFIRMATION_ONLY_REGEX.test(msg)) {
+    session.awaitingRegistrationConfirmation = false;
+    session.awaitingPhone = true;
+
+    pushHistory(session, message, AFFIRMATION_REPLY);
+    await saveSession(userId, session);
+    return AFFIRMATION_REPLY;
+  }
+
   const detectedPrograms = detectPrograms(message, knowledge);
   const hasRecognizedProgram = detectedPrograms.length > 0;
-  const isGreetingOnly = GREETING_ONLY_REGEX.test(msg);
+  const isGreetingOnly = matchesGreetingOnly(msg);
 
-  if (CLOSING_MESSAGES.includes(msg)) {
+  if (isClosingMessage(msg)) {
     if (session.phone) {
       await clearSession(userId);
-      return "Баярлалаа. Танд амжилт хүсье! 😊";
+      return "Танд тус болж чадсандаа баяртай байна 😊. Танд амжилт хүсье!";
     }
 
     if (!session.phoneRequested) {
       session.phoneRequested = true;
       session.awaitingPhoneForClose = true;
 
-      const reply = `Танд туслахад таатай байлаа! 😊 Манай элсэлтийн зөвлөх тантай холбогдож, нэмэлт мэдээлэл өгөхийг хүсвэл утасны дугаараа үлдээгээрэй 📞`;
+      const reply = `Танд тус болж чадсандаа баяртай байна 😊 . Хэрэв манай элсэлтийн зөвлөхөөс дэлгэрэнгүй мэдээлэл авахыг хүсвэл утасны дугаараа үлдээгээрэй. Бид тантай удахгүй холбогдох болно 📞.`;
 
       pushHistory(session, message, reply);
       await saveSession(userId, session);
       return reply;
     }
 
-    // Already asked once — don't nag a second time, just close politely.
     await clearSession(userId);
-    return "Баярлалаа. Танд амжилт хүсье! 😊";
+    return "Танд тус болж чадсандаа баяртай байна 😊. Хэрэв AI Academy-ийн талаар дахин асуух зүйл гарвал бидэнтэй хүссэн үедээ холбогдоорой. Танд амжилт хүсье!";
   }
 
-  // Cheap shortcut: pure greeting, nothing else in the message.
-  // Everything else (including "greeting + question") goes to the AI.
   if (isGreetingOnly) {
     const reply = `Сайн байна уу! AI Academy Asia-д тавтай морилно уу. 😊
 
@@ -200,14 +229,13 @@ async function router(userId, text) {
     return reply;
   }
 
-  // Everything else — including greeting+question combos — goes to Gemini,
-  // which now receives the real conversation history via session.history,
-  // and may itself append a soft phone-number CTA after detailed answers.
   let reply = await aiHandler(message, knowledge, session);
 
-  // Safety net: strip any stray marker tags (e.g. <<ASK_REGISTRATION>>)
-  // that should never actually be shown to the customer.
   reply = reply.replace(/<<[A-Z_]+>>/g, "").trim();
+
+  session.awaitingRegistrationConfirmation = reply.includes(
+    REGISTRATION_QUESTION_MARKER
+  );
 
   pushHistory(session, message, reply);
   await saveSession(userId, session);
