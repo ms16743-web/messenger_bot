@@ -61,8 +61,13 @@ function extractPhoneNumber(message) {
   return digitsOnly.length === 8 ? digitsOnly : null;
 }
 
+// Only matches messages that are ENTIRELY a greeting, nothing else.
+// Anything longer, or a greeting combined with a question, falls
+// through to the AI, which handles that case naturally.
+// Includes common romanized ("Mongolian-English") typing of greetings,
+// e.g. "sainuu", "sn bnu", since customers often type this way.
 const GREETING_ONLY_REGEX =
-  /^(сайн байна уу|сайн уу|сайн|мэнд байна уу|мэнд|hi|hello|hey)[\s!.,😊🙂👋]*$/i;
+  /^(сайн байна уу|сайн уу|сайн|мэнд байна уу|мэнд|hi|hello|hey|sain baina uu|sainbaina uu|sain bna uu|sainbna uu|sain bna|sain uu|sainuu|sn bnu|snbnu|snuu|snu|sbu|menda|mend)[\s!.,😊🙂👋]*$/i;
 
 const CLOSING_MESSAGES = [
   "баярлалаа",
@@ -77,7 +82,7 @@ const CLOSING_MESSAGES = [
 async function router(userId, text) {
   const message = text.trim();
   const msg = normalizeText(message);
-  const knowledge = await getKnowledge();
+  const knowledge = getKnowledge();
 
   const session = await getSession(userId);
 
@@ -112,8 +117,9 @@ async function router(userId, text) {
 
   const hasMongolianCyrillic = /[А-Яа-яӨөҮүЁё]/.test(message);
   const isNumberOnly = /^\d+$/.test(message);
+  const isGreetingOnly = GREETING_ONLY_REGEX.test(msg);
 
-  if (!hasMongolianCyrillic && !isNumberOnly && !hasRecognizedProgram) {
+  if (!hasMongolianCyrillic && !isNumberOnly && !hasRecognizedProgram && !isGreetingOnly) {
     return "Уучлаарай, асуултаа монгол кириллээр дахин бичнэ үү.";
   }
 
@@ -134,11 +140,14 @@ async function router(userId, text) {
       return reply;
     }
 
+    // Already asked once — don't nag a second time, just close politely.
     await clearSession(userId);
     return "Баярлалаа. Танд амжилт хүсье! 😊";
   }
 
-  if (GREETING_ONLY_REGEX.test(msg)) {
+  // Cheap shortcut: pure greeting, nothing else in the message.
+  // Everything else (including "greeting + question") goes to the AI.
+  if (isGreetingOnly) {
     const reply = `Сайн байна уу! AI Academy Asia-д тавтай морилно уу. 😊
 
 Танд ямар мэдээлэл хэрэгтэй байна вэ?`;
@@ -191,14 +200,21 @@ async function router(userId, text) {
       session.answered = [...(session.answered || []), "human_support"];
     }
 
-    const reply = `Мэдээж! Манай элсэлтийн зөвлөхтэй ${knowledge.contact.phone} дугаараар холбогдож болно. Эсвэл өөрийн утасны дугаараа 📞 үлдээвэл манай зөвлөх танд эргэж холбогдох болно`;
+    const reply = `Мэдээж! Манай элсэлтийн зөвлөхтэй ${knowledge.contact.phone} дугаараар холбогдож болно. Эсвэл өөрийн утасны дугаараа үлдээвэл манай зөвлөх танд эргэж холбогдох болно 📞`;
 
     pushHistory(session, message, reply);
     await saveSession(userId, session);
     return reply;
   }
 
-  const reply = await aiHandler(message, knowledge, session);
+  // Everything else — including greeting+question combos — goes to Gemini,
+  // which now receives the real conversation history via session.history,
+  // and may itself append a soft phone-number CTA after detailed answers.
+  let reply = await aiHandler(message, knowledge, session);
+
+  // Safety net: strip any stray marker tags (e.g. <<ASK_REGISTRATION>>)
+  // that should never actually be shown to the customer.
+  reply = reply.replace(/<<[A-Z_]+>>/g, "").trim();
 
   pushHistory(session, message, reply);
   await saveSession(userId, session);

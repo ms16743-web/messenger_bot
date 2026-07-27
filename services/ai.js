@@ -1,14 +1,7 @@
-/**
- * Gemini AI service for AI Academy Asia Messenger chatbot.
- */
-
-// Node 18+ has fetch built in globally. If Render's runtime is older,
-// or the global isn't available for any reason, fall back to node-fetch
-// so this never silently breaks.
 const fetchFn =
   typeof fetch === "function" ? fetch : require("node-fetch");
 
-const GEMINI_MODEL = "gemini-3.5-flash";
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 function getSelectedProgram(knowledge, session) {
   if (!session?.selectedProgram) return null;
@@ -107,32 +100,21 @@ function buildSystemPrompt(knowledge, session) {
 - Нэг баримт (жишээ нь зөвхөн үнэ) асуувал энгийн нэг өгүүлбэрээр хариул, emoji, тэмдэг шаардлагагүй.
 - Ердийн ярианы хариулт (асуулт тодруулах, товч хариулт гэх мэт) энгийн өгүүлбэр хэвээр байж болно.
 
-Утасны дугаар цуглуулах:
-- hasPhone: true бол утасны дугаар дахин бүү асуу.
-- Хэрэв та хэрэглэгчид дэлгэрэнгүй, олон талт мэдээлэл (жишээ нь хугацааны бүтэц, хуваарийн задаргаа) өгсөн бөгөөд hasPhone: false бол, хариултын төгсгөлд "Хэрэв дэлгэрэнгүй мэдээлэл авахыг хүсвэл утасны дугаараа үлдээгээрэй, бид тантай холбогдоно 📞" гэх мэт богино, дарамтгүй саналыг нэмж болно.
-- Энгийн богино асуултад (жишээ нь зөвхөн үнэ) энэ саналыг бүү нэм — зөвхөн дэлгэрэнгүй мэдээлэл өгсөн үед л хэрэглэ.
-- Хэрэглэгч утасны дугаараа өгсний дараа (өөрөө автоматаар танигдана) баярлалаа гэж хэлээд ердийн ярианаа үргэлжлүүлж болно.
-
 БҮРТГЭЛИЙН ЯРИАНЫ ДҮРЭМ:
 
 - Ярианы эхэнд шууд утасны дугаар асууж болохгүй.
-- Мэндчилгээний дараа бүртгэл санал болгож болохгүй.
+- Мэндчилгээний дараа шууд бүртгэл санал болгож болохгүй.
 - Хэрэглэгчийн хэрэгцээ болон сонирхож буй хөтөлбөрийг эхлээд тодруул.
-- Хөтөлбөрийн талаарх асуултад нь хариулсны дараа, хэрэглэгч бодитоор сонирхож байгаа нь тодорхой болсон үед бүртгүүлэх хүсэлтэй эсэхийг асууж болно.
-- Бүртгүүлэх хүсэлтэй эсэхийг нэг удаа л асуу.
-- Тэр асуултыг асуусан хариултынхаа хамгийн төгсгөлд дараах тэмдэглэгээг нэм:
-
-<<ASK_REGISTRATION>>
-
-- <<ASK_REGISTRATION>> тэмдэглэгээг зөвхөн бүртгүүлэх хүсэлтэй эсэхийг шууд асуусан үед ашигла.
-- Утасны дугаар шууд асууж болохгүй.
+- Хөтөлбөрийн талаарх асуултад нь хариулсны дараа, хэрэглэгч бодитоор сонирхож байгаа нь тодорхой болсон үед л "Та энэ хөтөлбөрт бүртгүүлэх хүсэлтэй байна уу?" гэх мэт асуултыг хариултынхаа төгсгөлд ердийн өгүүлбэрээр асууж болно.
+- Тусгай тэмдэглэгээ (жишээ нь <<ASK_REGISTRATION>> гэх мэт) АШИГЛАХГҮЙ — зөвхөн энгийн, байгалийн өгүүлбэрээр асуу.
+- Бүртгүүлэх хүсэлтэй эсэхийг нэг удаа л асуу. hasPhone: true эсвэл аль хэдийн нэг удаа асуусан бол дахин бүү асуу.
+- Утасны дугаарыг шууд асууж болохгүй — зөвхөн бүртгүүлэх хүсэлтэй эсэхийг л асууна. Хэрэглэгч "тийм" гэж хариулсны дараа л утасны дугаар үлдээхийг санал болго.
 - Академийн утасны дугаарыг зөвхөн хэрэглэгч хүнтэй шууд холбогдох хүсэлт гаргасан үед өг.
 
 Жишээ яриа:
 
 Хэрэглэгч: Junior сургалтын үнэ болон эхлэх хугацааг хэлээч.
 Хариулт: Junior AI Engineer хөтөлбөрийн төлбөр ... бөгөөд ... өдөр эхэлнэ. Та энэ хөтөлбөрт бүртгүүлэх хүсэлтэй байна уу?
-<<ASK_REGISTRATION>>
 
 Хэрэглэгч: Junior
 Зөв хариулт:
@@ -155,7 +137,7 @@ function buildSystemPrompt(knowledge, session) {
 
 Эхлэх огноо: 2026.08.17
 
-Хэрэв та дэлгэрэнгүй мэдээлэл авахыг хүсвэл утасны дугаараа үлдээгээрэй, бид тантай холбогдоно 📞
+Та энэ хөтөлбөрт бүртгүүлэх хүсэлтэй байна уу?
 
 Хэрэглэгч: Та хаана байрладаг вэ?
 Зөв хариулт: 📍 Бид ITC Tower-ийн 11 давхарт байрладаг.
@@ -193,12 +175,6 @@ ${JSON.stringify(knowledge, null, 2)}
 `;
 }
 
-/**
- * Turns the session's stored history into Gemini's multi-turn
- * `contents` format, then appends the current message.
- * Gemini requires alternating user/model roles, which holds as
- * long as router.js always pushes turns in user+model pairs.
- */
 function buildContents(session, text) {
   const history = Array.isArray(session?.history) ? session.history : [];
 
@@ -211,10 +187,6 @@ function buildContents(session, text) {
   ];
 }
 
-/**
- * Calls Gemini, retrying once after a short delay if the model is
- * temporarily overloaded (503).
- */
 async function callGemini(url, apiKey, requestBody, attempt = 1) {
   const response = await fetchFn(url, {
     method: "POST",
