@@ -1,7 +1,7 @@
 const fetchFn =
   typeof fetch === "function" ? fetch : require("node-fetch");
 
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL = "gemini-3.1-flash-lite";
 
 function getSelectedProgram(knowledge, session) {
   if (!session?.selectedProgram) return null;
@@ -243,9 +243,6 @@ async function aiHandler(text, knowledge, session = {}) {
       temperature: 0.6,
       topP: 0.9,
       maxOutputTokens: 1024,
-      thinkingConfig: {
-        thinkingLevel: "low",
-      },
     },
   };
 
