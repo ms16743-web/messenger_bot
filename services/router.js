@@ -114,14 +114,7 @@ async function router(userId, text) {
 
   const detectedPrograms = detectPrograms(message, knowledge);
   const hasRecognizedProgram = detectedPrograms.length > 0;
-
-  const hasMongolianCyrillic = /[А-Яа-яӨөҮүЁё]/.test(message);
-  const isNumberOnly = /^\d+$/.test(message);
   const isGreetingOnly = GREETING_ONLY_REGEX.test(msg);
-
-  if (!hasMongolianCyrillic && !isNumberOnly && !hasRecognizedProgram && !isGreetingOnly) {
-    return "Уучлаарай, асуултаа монгол кириллээр дахин бичнэ үү.";
-  }
 
   if (CLOSING_MESSAGES.includes(msg)) {
     if (session.phone) {
