@@ -97,7 +97,7 @@ function addMessageToBuffer(senderId, messageText) {
     clearTimeout(userBuffer.timer);
   }
 
-  userBuffer.timer = setTimeout(async () => {
+userBuffer.timer = setTimeout(async () => {
     const combinedMessage = userBuffer.messages.join("\n");
 
     messageBuffers.delete(senderId);
@@ -105,7 +105,7 @@ function addMessageToBuffer(senderId, messageText) {
     console.log("Combined message:", combinedMessage);
 
     try {
-      const reply = await router(senderId, combinedMessage);
+      const { reply, truncated } = await router(senderId, combinedMessage);
 
       if (!reply) {
         console.log("Router returned an empty response.");
@@ -113,6 +113,15 @@ function addMessageToBuffer(senderId, messageText) {
       }
 
       await sendMessage(senderId, reply);
+
+      if (truncated) {
+        setTimeout(async () => {
+          await sendMessage(
+            senderId,
+            "Уучлаарай, өмнөх зурвас дутуу орсон байж магадгүй 🙏 Танд нэмэлт асуулт байвал чөлөөтэй бичээрэй."
+          );
+        }, 2500);
+      }
     } catch (error) {
       console.error("Bot response error:", error.message);
 
