@@ -100,7 +100,7 @@ const AFFIRMATION_ONLY_REGEX =
 const REGISTRATION_QUESTION_MARKER = "бүртгүүлэх хүсэлтэй байна уу";
 
 const AFFIRMATION_REPLY =
-  "Маш сайн байна! Утасны дугаараа бичээд илгээгээрэй, манай элсэлтийн зөвлөх тантай холбогдох болно 📞";
+  "Танд тус болж чадсандаа баяртай байна 😊 . Утасны дугаараа бичээд илгээгээрэй, манай элсэлтийн зөвлөх тантай холбогдох болно 📞";
 
 async function router(userId, text) {
   const message = text.trim();
@@ -132,7 +132,7 @@ async function router(userId, text) {
       await saveSession(userId, session);
     }
 
-    return reply;
+    return { reply, truncated: false };
   }
 
   if (session.awaitingRegistrationConfirmation && AFFIRMATION_ONLY_REGEX.test(msg)) {
@@ -141,7 +141,7 @@ async function router(userId, text) {
 
     pushHistory(session, message, AFFIRMATION_REPLY);
     await saveSession(userId, session);
-    return AFFIRMATION_REPLY;
+    return { reply: AFFIRMATION_REPLY, truncated: false };
   }
 
   const detectedPrograms = detectPrograms(message, knowledge);
@@ -151,7 +151,10 @@ async function router(userId, text) {
   if (isClosingMessage(msg)) {
     if (session.phone) {
       await clearSession(userId);
-      return "Танд тус болж чадсандаа баяртай байна 😊. Танд амжилт хүсье!";
+      return {
+        reply: "Танд тус болж чадсандаа баяртай байна 😊. Танд амжилт хүсье!",
+        truncated: false,
+      };
     }
 
     if (!session.phoneRequested) {
@@ -162,11 +165,15 @@ async function router(userId, text) {
 
       pushHistory(session, message, reply);
       await saveSession(userId, session);
-      return reply;
+      return { reply, truncated: false };
     }
 
     await clearSession(userId);
-    return "Танд тус болж чадсандаа баяртай байна 😊. Хэрэв AI Academy-ийн талаар дахин асуух зүйл гарвал бидэнтэй хүссэн үедээ холбогдоорой. Танд амжилт хүсье!";
+    return {
+      reply:
+        "Танд тус болж чадсандаа баяртай байна 😊. Хэрэв AI Academy-ийн талаар дахин асуух зүйл гарвал бидэнтэй хүссэн үедээ холбогдоорой. Танд амжилт хүсье!",
+      truncated: false,
+    };
   }
 
   if (isGreetingOnly) {
@@ -176,7 +183,7 @@ async function router(userId, text) {
 
     pushHistory(session, message, reply);
     await saveSession(userId, session);
-    return reply;
+    return { reply, truncated: false };
   }
 
   if (detectedPrograms.length === 1) {
@@ -226,12 +233,11 @@ async function router(userId, text) {
 
     pushHistory(session, message, reply);
     await saveSession(userId, session);
-    return reply;
+    return { reply, truncated: false };
   }
 
-  let reply = await aiHandler(message, knowledge, session);
-
-  reply = reply.replace(/<<[A-Z_]+>>/g, "").trim();
+  const { text: aiReply, truncated } = await aiHandler(message, knowledge, session);
+  const reply = aiReply.replace(/<<[A-Z_]+>>/g, "").trim();
 
   session.awaitingRegistrationConfirmation = reply.includes(
     REGISTRATION_QUESTION_MARKER
@@ -240,7 +246,7 @@ async function router(userId, text) {
   pushHistory(session, message, reply);
   await saveSession(userId, session);
 
-  return reply;
+  return { reply, truncated };
 }
 
 module.exports = {

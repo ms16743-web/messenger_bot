@@ -153,12 +153,10 @@ function buildSystemPrompt(knowledge, session) {
 Зөв хариулт: Сайн байна уу! 😊 AI Academy-д тавтай морил. 
 Одоогоор бүртгэл нь нээлттэй байгаа сургалтууд: 
 
-
 ✦ Junior AI Engineer (хүүхэд, өсвөр үеийнхэнд)
 ✦ AI 101 Онлайн сургалт (насанд хүрэгчдэд)
 ✦ AI Engineer (насанд хүрэгчдийн төсөлт сургалт)
 ✦ Corporate Leaders AI (Байгууллага, удирдлагуудад зориулсан AI сургалт)
-
 
 Та хэнд зориулж сургалт хайж байна вэ? 😊 
 
@@ -171,7 +169,6 @@ function buildSystemPrompt(knowledge, session) {
 Зөв хариулт:
 ✦ Junior AI Engineer нь [JSON-д заасан насны бүлэг бүр]-д зориулсан [JSON-оос] хугацаатай танхимын хөтөлбөр
 ⤷ Scratch болон no-code хэрэгслүүд ашиглан сурагчид өөрсдийн AI төслийг бүтээж сурна
-
 
 Та үнэ, хуваарь эсвэл бүртгэлийн талаар дэлгэрүүлж мэдмээр байна уу?
 
@@ -190,9 +187,7 @@ function buildSystemPrompt(knowledge, session) {
 ⤷ Танхимаар, 7 хоногт хэдэн удаа хичээллэдэг зэрэг нарийвчилсан хуваарийг JSON-оос ав
 ⤷ Суралцагчид өөрийн AI төслийг эхнээс нь бүрэн хэрэгжүүлж, бодит туршлага хуримтлуулна
 
-
 Эхлэх огноо: [JSON-оос]
-
 
 Та энэ хөтөлбөрт бүртгүүлэх хүсэлтэй байна уу?
 
@@ -216,7 +211,6 @@ function buildSystemPrompt(knowledge, session) {
 ✦ AI Engineer
 Байгууллага, удирдлагуудад зориулсан AI сургалт:
 ✦ Corporate Leaders AI
-
 
 Та хэнд зориулж сургалт хайж байна вэ? 😊 
 
@@ -283,10 +277,12 @@ async function aiHandler(text, knowledge, session = {}) {
 
   if (!apiKey) {
     console.error("❌ GEMINI_API_KEY is missing from environment variables.");
-    return (
-      knowledge.fallback ||
-      "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай."
-    );
+    return {
+      text:
+        knowledge.fallback ||
+        "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай.",
+      truncated: false,
+    };
   }
 
   const systemPrompt = buildSystemPrompt(knowledge, session);
@@ -301,27 +297,34 @@ async function aiHandler(text, knowledge, session = {}) {
     generationConfig: {
       temperature: 0.6,
       topP: 0.9,
-      maxOutputTokens: 1024,
+      maxOutputTokens: 2048,
+      thinkingConfig: { thinkingBudget: 0 },
     },
   };
 
-  try {
+ try {
     const { response, data } = await callGemini(url, apiKey, requestBody);
 
     if (!response.ok) {
       console.error("❌ Gemini API error:", response.status, JSON.stringify(data));
 
       if (response.status === 503) {
-        return "Уучлаарай, систем түр удаашралтай байна. Хэдхэн секундын дараа дахин бичээрэй 🙏";
+        return {
+          text: "Уучлаарай, систем түр удаашралтай байна. Хэдхэн секундын дараа дахин бичээрэй 🙏",
+          truncated: false,
+        };
       }
 
-      return (
-        knowledge.fallback ||
-        "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай."
-      );
+      return {
+        text:
+          knowledge.fallback ||
+          "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай.",
+        truncated: false,
+      };
     }
 
     const finishReason = data.candidates?.[0]?.finishReason;
+    const truncated = finishReason === "MAX_TOKENS";
     if (finishReason && finishReason !== "STOP") {
       console.warn(`⚠️ Gemini finishReason: ${finishReason} (reply may be truncated or filtered)`);
     }
@@ -333,20 +336,22 @@ async function aiHandler(text, knowledge, session = {}) {
 
     if (!reply) {
       console.error("❌ Gemini returned no text:", JSON.stringify(data));
-      return (
-        knowledge.fallback ||
-        "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай."
-      );
+      return {
+        text:
+          knowledge.fallback ||
+          "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай.",
+        truncated: false,
+      };
     }
-
-    return reply;
+    return { text: reply, truncated };
   } catch (error) {
     console.error("❌ Gemini request failed:", error.message);
-    return (
-      knowledge.fallback ||
-      "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай."
-    );
+    return {
+      text:
+        knowledge.fallback ||
+        "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай.",
+      truncated: false,
+    };
   }
 }
-
 module.exports = aiHandler;
