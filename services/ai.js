@@ -209,7 +209,6 @@ function buildSystemPrompt(knowledge, session) {
 Насанд хүрэгчдийн:
 ✦ AI 101 Онлайн сургалт
 ✦ AI Engineer
-Байгууллага, удирдлагуудад зориулсан AI сургалт:
 ✦ Corporate Leaders AI
 
 Та хэнд зориулж сургалт хайж байна вэ? 😊 
