@@ -12,6 +12,7 @@ app.use(express.json());
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
+const IG_ACCESS_TOKEN = process.env.IG_ACCESS_TOKEN;
 
 const PORT = process.env.PORT || 3000;
 
@@ -28,12 +29,18 @@ app.get("/health", (req, res) => {
     message: "Bot server is healthy",
   });
 });
+
 const path = require("path");
- 
+
 app.get("/privacy-policy", (req, res) => {
   res.sendFile(path.join(__dirname, "privacy-policy.html"));
 });
- 
+
+app.get("/instagram/callback", (req, res) => {
+  console.log("Instagram OAuth callback hit:", req.query);
+  res.status(200).send("Login successful. You can close this window.");
+});
+
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -51,10 +58,10 @@ app.get("/webhook", (req, res) => {
 });
 
 app.post("/webhook", (req, res) => {
-  // Facebook-д webhook хүлээн авсныг шууд мэдэгдэнэ.
   res.sendStatus(200);
 
   try {
+    const platform = req.body.object; // "page" (Messenger) or "instagram"
     const entries = req.body.entry || [];
 
     for (const entry of entries) {
@@ -69,9 +76,9 @@ app.post("/webhook", (req, res) => {
 
         if (!senderId || !messageText) continue;
 
-        console.log("Received message:", messageText);
+        console.log(`Received ${platform} message:`, messageText);
 
-        addMessageToBuffer(senderId, messageText);
+        addMessageToBuffer(senderId, messageText, platform);
       }
     }
   } catch (error) {
@@ -79,26 +86,29 @@ app.post("/webhook", (req, res) => {
   }
 });
 
-function addMessageToBuffer(senderId, messageText) {
+function addMessageToBuffer(senderId, messageText, platform) {
   let userBuffer = messageBuffers.get(senderId);
 
   if (!userBuffer) {
     userBuffer = {
       messages: [],
       timer: null,
+      platform,
     };
 
     messageBuffers.set(senderId, userBuffer);
   }
 
   userBuffer.messages.push(messageText);
+  userBuffer.platform = platform;
 
   if (userBuffer.timer) {
     clearTimeout(userBuffer.timer);
   }
 
-userBuffer.timer = setTimeout(async () => {
+  userBuffer.timer = setTimeout(async () => {
     const combinedMessage = userBuffer.messages.join("\n");
+    const messagePlatform = userBuffer.platform;
 
     messageBuffers.delete(senderId);
 
@@ -112,13 +122,14 @@ userBuffer.timer = setTimeout(async () => {
         return;
       }
 
-      await sendMessage(senderId, reply);
+      await sendMessage(senderId, reply, messagePlatform);
 
       if (truncated) {
         setTimeout(async () => {
           await sendMessage(
             senderId,
-            "Уучлаарай, өмнөх зурвас дутуу орсон байж магадгүй 🙏 Танд нэмэлт асуулт байвал чөлөөтэй бичээрэй."
+            "Уучлаарай, өмнөх зурвас дутуу орсон байж магадгүй 🙏 Танд нэмэлт асуулт байвал чөлөөтэй бичээрэй.",
+            messagePlatform
           );
         }, 2500);
       }
@@ -127,29 +138,41 @@ userBuffer.timer = setTimeout(async () => {
 
       await sendMessage(
         senderId,
-        "Уучлаарай, одоогоор таны асуултад хариулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай."
+        "Уучлаарай, одоогоор таны асуултад хариулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай.",
+        messagePlatform
       );
     }
   }, MESSAGE_DELAY);
 }
 
-async function sendMessage(psid, text) {
-  if (!PAGE_ACCESS_TOKEN) {
-    console.error("PAGE_ACCESS_TOKEN is missing.");
+async function sendMessage(recipientId, text, platform = "page") {
+  const isInstagram = platform === "instagram";
+  const url = isInstagram
+    ? "https://graph.instagram.com/v21.0/me/messages"
+    : "https://graph.facebook.com/v19.0/me/messages";
+  const accessToken = isInstagram ? IG_ACCESS_TOKEN : PAGE_ACCESS_TOKEN;
+
+  if (!accessToken) {
+    console.error(`Access token missing for platform: ${platform}`);
     return;
   }
 
-  if (!psid || !text) {
-    console.error("Recipient ID or reply text is missing.");
+  if (typeof text !== "string" || !text.trim()) {
+    console.error("sendMessage got invalid text:", typeof text, JSON.stringify(text));
+    return;
+  }
+
+  if (!recipientId) {
+    console.error("Recipient ID is missing.");
     return;
   }
 
   try {
     await axios.post(
-      "https://graph.facebook.com/v19.0/me/messages",
+      url,
       {
         recipient: {
-          id: psid,
+          id: recipientId,
         },
         messaging_type: "RESPONSE",
         message: {
@@ -158,16 +181,16 @@ async function sendMessage(psid, text) {
       },
       {
         params: {
-          access_token: PAGE_ACCESS_TOKEN,
+          access_token: accessToken,
         },
         timeout: 10000,
       }
     );
 
-    console.log("Message sent successfully.");
+    console.log(`Message sent successfully via ${platform}.`);
   } catch (error) {
     console.error(
-      "Messenger send error:",
+      `Messenger/Instagram send error (${platform}):`,
       error.response?.data || error.message
     );
   }

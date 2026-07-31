@@ -239,12 +239,12 @@ function buildSystemPrompt(knowledge, session) {
 Хэрэглэгч: Баярлалаа
 Зөв хариулт: Танд тус болж чадсандаа баяртай байна  😊. Танд өөр асуух зүйл гарвал бидэнтэй дахин холбогдоорой.
 
+АКАДЕМИЙН БАТАЛГААТАЙ МЭДЭЭЛЭЛ:
+${JSON.stringify(knowledge, null, 2)}
 
 ЯРИАНЫ ОДООГИЙН САНАМЖ:
 ${JSON.stringify(conversationContext, null, 2)}
 
-АКАДЕМИЙН БАТАЛГААТАЙ МЭДЭЭЛЭЛ:
-${JSON.stringify(knowledge, null, 2)}
 `;
 }
 
