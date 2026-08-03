@@ -60,6 +60,8 @@ app.get("/webhook", (req, res) => {
 app.post("/webhook", (req, res) => {
   res.sendStatus(200);
 
+  console.log("RAW WEBHOOK BODY:", JSON.stringify(req.body));
+
   try {
     const platform = req.body.object; // "page" (Messenger) or "instagram"
     const entries = req.body.entry || [];
@@ -114,6 +116,8 @@ function addMessageToBuffer(senderId, messageText, platform) {
 
     console.log("Combined message:", combinedMessage);
 
+    await showTypingIndicator(senderId, messagePlatform);
+
     try {
       const { reply, truncated } = await router(senderId, combinedMessage);
 
@@ -143,6 +147,32 @@ function addMessageToBuffer(senderId, messageText, platform) {
       );
     }
   }, MESSAGE_DELAY);
+}
+
+async function showTypingIndicator(recipientId, platform = "page") {
+  const isInstagram = platform === "instagram";
+  const url = isInstagram
+    ? "https://graph.instagram.com/v21.0/me/messages"
+    : "https://graph.facebook.com/v19.0/me/messages";
+  const accessToken = isInstagram ? IG_ACCESS_TOKEN : PAGE_ACCESS_TOKEN;
+
+  if (!accessToken) return;
+
+  try {
+    await axios.post(
+      url,
+      {
+        recipient: { id: recipientId },
+        sender_action: "typing_on",
+      },
+      {
+        params: { access_token: accessToken },
+        timeout: 5000,
+      }
+    );
+  } catch (error) {
+    console.error(`Typing indicator error (${platform}):`, error.response?.data || error.message);
+  }
 }
 
 async function sendMessage(recipientId, text, platform = "page") {
