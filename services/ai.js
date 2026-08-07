@@ -354,7 +354,11 @@ async function aiHandler(text, knowledge, session = {}) {
     if (finishReason && finishReason !== "STOP") {
       console.warn(`⚠️ Gemini finishReason: ${finishReason} (reply may be truncated or filtered)`);
     }
-
+console.log(
+      "TOKEN USAGE — prompt:", data.usageMetadata?.promptTokenCount,
+      "| cached:", data.usageMetadata?.cachedContentTokenCount || 0,
+      "| output:", data.usageMetadata?.candidatesTokenCount
+    );
     const reply = data.candidates?.[0]?.content?.parts
       ?.map((part) => part.text || "")
       .join("")
