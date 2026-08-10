@@ -32,6 +32,7 @@
 ,
   "programs": [
     {
+      "tagline": "10–18 насныханд зориулсан танхимын хөтөлбөр",
       "id": "junior_ai_engineer",
       "name": "Junior AI Engineer Summer Bootcamp",
       "aliases": [
@@ -92,6 +93,7 @@
       ]
     },
     {
+      "tagline": "Насанд хүрэгчидэд зориулсан онлайн хөтөлбөр",
       "id": "ai_101_online",
       "name": "AI 101 Онлайн сургалт",
       "aliases": [
@@ -129,6 +131,7 @@
       ]
     },
     {
+      "tagline": "Насанд хүрэгчидэд зориулсан AI Engineer хөтөлбөр",
       "id": "ai_engineer",
       "name": "Олон улсад өрсөлдөх чадвартай AI Engineer болох",
       "aliases": [
@@ -163,6 +166,7 @@
       ]
     },
     {
+      "tagline": "Насанд хүрэгчидэд зориулсан байгууллагын AI хөтөлбөр",
       "id": "corporate_ai",
       "name": "Corporate Leaders AI — Корпоратив удирдлагуудад зориулсан AI хөтөлбөр",
       "aliases": [

@@ -1,5 +1,6 @@
 const aiHandler = require("./ai");
 const { getKnowledge } = require("./knowledge");
+const { detectIntent } = require("./handlers/intent");
 const {
   getSession,
   saveSession,
@@ -205,7 +206,13 @@ async function router(userId, text) {
   } else {
     session.mentionedPrograms = [];
   }
-
+const intentResult = detectIntent(msg, knowledge, session);
+  if (intentResult) {
+    Object.assign(session, intentResult.sessionPatch);
+    pushHistory(session, message, intentResult.reply);
+    await saveSession(userId, session);
+    return { reply: intentResult.reply, truncated: false };
+  }
   const wantsHuman =
     msg.includes("хүнтэй ярих") ||
     msg.includes("хүнтэй холбогдох") ||
