@@ -140,8 +140,7 @@ function detectWhoForAnswerIntent(msg, knowledge, session) {
 
   const reply =
     formatProgramList(filtered) +
-    `\n\n
-Эдгээр хөтөлбөрүүдээс аль талаар нь илүү дэлгэрэнгүй мэдээлэл авахыг хүсэж байна вэ? 😊`,
+    `\n\nЭдгээр хөтөлбөрүүдээс аль талаар нь илүү дэлгэрэнгүй мэдээлэл авахыг хүсэж байна вэ? 😊`;
 
   return { reply, sessionPatch: { pendingWhoFor: false } };
 }
