@@ -1,7 +1,6 @@
 const aiHandler = require("./ai");
 const { getKnowledge } = require("./knowledge");
 const { detectIntent } = require("./intent");
-const intentResult = detectIntent(msg, knowledge, session, hasRecognizedProgram);
 const {
   getSession,
   saveSession,
@@ -149,7 +148,13 @@ async function router(userId, text) {
   const detectedPrograms = detectPrograms(message, knowledge);
   const hasRecognizedProgram = detectedPrograms.length > 0;
   const isGreetingOnly = matchesGreetingOnly(msg);
-
+const intentResult = detectIntent(msg, knowledge, session, hasRecognizedProgram);
+  if (intentResult) {
+    Object.assign(session, intentResult.sessionPatch);
+    pushHistory(session, message, intentResult.reply);
+    await saveSession(userId, session);
+    return { reply: intentResult.reply, truncated: false };
+  }
   if (isClosingMessage(msg)) {
     if (session.phone) {
       await clearSession(userId);
