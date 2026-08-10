@@ -1,6 +1,6 @@
 const aiHandler = require("./ai");
 const { getKnowledge } = require("./knowledge");
-const { detectIntent } = require("./handlers/intent");
+const { detectIntent } = require("./intent");
 const {
   getSession,
   saveSession,
