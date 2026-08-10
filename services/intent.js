@@ -65,18 +65,25 @@ function getOfficeStatus(officeHours) {
   return "open";
 }
 
-// --- Intent: static facts, now hours-aware ---
+// --- Intent: location / office hours (static facts) ---
 
-const LOCATION_REGEX = /(байршил|хаана байр|хаана орш|haan bdg|hana bdg|address|location)/i;
-const HOURS_REGEX =
-  /(ажиллах цаг|цагийн хуваарь|office tsag|ажлын цаг|ирж болох|odoo irj|irj bolh|come now|walk in|opening hours|working hours|цаг хэд)/i;
+const LOCATION_REGEX =
+  /(байршил|хаяг|хаана байр|хаана орш|та нар хаана|энэ хаана|bairsh|bayrsh|brshil|brshl|hayg|hayag|hayig|haan[a]?\s*bai|haana\s*bai|hana\s*bai|haanve|haan\s*bdg|hana\s*bdg|address|location|where.*(you|located)|where\s+is)/i;
+
+const HOURS_TIME_WORD = /(tsag|цаг)/i;
+const HOURS_CONTEXT_WORD =
+  /(huviar|huvari|huvaari|хуваарь|ажиллах|ажлын|ajillah|ajlin|ajliin|hed(ees)?|хэд|open|hours|walk\s*in|ирж бол|irj\s*bol)/i;
+
+function isHoursQuestion(msg) {
+  return HOURS_TIME_WORD.test(msg) && HOURS_CONTEXT_WORD.test(msg);
+}
 
 function detectStaticFactIntent(msg, knowledge) {
   if (LOCATION_REGEX.test(msg)) {
     return `📍 ${knowledge.location}`;
   }
 
-  if (HOURS_REGEX.test(msg)) {
+  if (isHoursQuestion(msg)) {
     const h = knowledge.office_hours;
     if (!h) return null;
 
@@ -98,7 +105,7 @@ function detectStaticFactIntent(msg, knowledge) {
 // --- Intent: vague "tell me about your programs" request ---
 
 const VAGUE_REQUEST_REGEX =
-  /(мэдээлэл авъя|мэдээлэл өгөөч|хөтөлбөрийн мэдээлэл|программ.*байг|сургалт.*байг|program info|tell me about|what programs|medeelel avii|hutulbriin medeel)/i;
+  /(мэдээлэл авъя|мэдээлэл өгөөч|хөтөлбөрийн мэдээлэл|программ.*байг|сургалт.*байг|program info|tell me about|what programs|medeelel avii|medeelel uguch|hutulbriin medeel)/i;
 
 function detectVagueRequestIntent(msg, knowledge, hasSpecificProgramMatch) {
   // If detectPrograms already found a named program in this message,
@@ -107,10 +114,9 @@ function detectVagueRequestIntent(msg, knowledge, hasSpecificProgramMatch) {
   if (!VAGUE_REQUEST_REGEX.test(msg)) return null;
 
   const reply =
-    `[ NEW ADMISSION ] 🚀🔥\n` +
-    `AI Academy Asia-ийн шинэ элсэлтүүд албан ёсоор эхэллээ.\n\n` +
-    formatProgramList(knowledge.programs) +
-    `\n\n📍 Байршил: ${knowledge.location}.\n` +
+    `Сайн байна уу! 😊 AI Academy-д тавтай морил. 
+Одоогоор бүртгэл нь нээлттэй байгаа сургалтууд: \n\n` +
+    formatProgramList(knowledge.programs) + `\n\n` +
     `Та хэнд зориулж сургалт хайж байна вэ? (өөртөө / хүүхдэдээ / байгууллагадаа)`;
 
   return { reply, sessionPatch: { pendingWhoFor: true } };
@@ -118,9 +124,9 @@ function detectVagueRequestIntent(msg, knowledge, hasSpecificProgramMatch) {
 
 // --- Intent: answering "who is this for?" ---
 
-const KID_ANSWER_REGEX = /(хүүхэд|хүүхдэдээ|huuhed|10.?18|өсвөр|kid|child)/i;
-const COMPANY_ANSWER_REGEX = /(байгууллага|компани|company|corporate)/i;
-const ADULT_ANSWER_REGEX = /(өөртөө|намайг|би өөрөө|adult|myself|for me)/i;
+const KID_ANSWER_REGEX = /(хүүхэд|хүүхдэдээ|huuhed|huuhedde|huhed|10.?18|өсвөр|kid|child)/i;
+const COMPANY_ANSWER_REGEX = /(байгууллага|компани|compand|company|corporate)/i;
+const ADULT_ANSWER_REGEX = /(өөртөө|uurtuu|намайг|би өөрөө|adult|myself|for me)/i;
 
 function detectWhoForAnswerIntent(msg, knowledge, session) {
   if (!session?.pendingWhoFor) return null;
@@ -134,12 +140,14 @@ function detectWhoForAnswerIntent(msg, knowledge, session) {
 
   const reply =
     formatProgramList(filtered) +
-    `\n\nТа эдгээрээс аль нь сонирхолтой байгаагаа хэлээрэй, дэлгэрэнгүй мэдээлэл өгье.`;
+    `\n\n
+Эдгээр хөтөлбөрүүдээс аль талаар нь илүү дэлгэрэнгүй мэдээлэл авахыг хүсэж байна вэ? 😊`,
 
   return { reply, sessionPatch: { pendingWhoFor: false } };
 }
 
 // --- Public entry point ---
+// Returns null (no match — fall through to AI) or { reply, sessionPatch }
 
 function detectIntent(msg, knowledge, session, hasSpecificProgramMatch) {
   const whoForAnswer = detectWhoForAnswerIntent(msg, knowledge, session);
