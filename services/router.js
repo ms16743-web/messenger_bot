@@ -1,6 +1,7 @@
 const aiHandler = require("./ai");
 const { getKnowledge } = require("./knowledge");
 const { detectIntent } = require("./intent");
+const intentResult = detectIntent(msg, knowledge, session, hasRecognizedProgram);
 const {
   getSession,
   saveSession,
