@@ -212,13 +212,7 @@ const intentResult = detectIntent(msg, knowledge, session, hasRecognizedProgram)
   } else {
     session.mentionedPrograms = [];
   }
-const intentResult = detectIntent(msg, knowledge, session);
-  if (intentResult) {
-    Object.assign(session, intentResult.sessionPatch);
-    pushHistory(session, message, intentResult.reply);
-    await saveSession(userId, session);
-    return { reply: intentResult.reply, truncated: false };
-  }
+
   const wantsHuman =
     msg.includes("хүнтэй ярих") ||
     msg.includes("хүнтэй холбогдох") ||
