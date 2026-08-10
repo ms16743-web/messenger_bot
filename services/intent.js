@@ -72,7 +72,7 @@ const LOCATION_REGEX =
 
 const HOURS_TIME_WORD = /(tsag|цаг)/i;
 const HOURS_CONTEXT_WORD =
-  /(huviar|huvari|huvaari|хуваарь|ажиллах|ажлын|ajillah|ajlin|ajliin|hed(ees)?|хэд|open|hours|walk\s*in|ирж бол|irj\s*bol)/i;
+  /(huviar|huvira|huvari|huvaari|хуваарь|ажиллах|ажлын|ajillah|ajlin|ajliin|hed(ees)?|hze|hz|хэд|open|hours|walk\s*in|ирж бол|irj\s*bol)/i;
 
 function isHoursQuestion(msg) {
   return HOURS_TIME_WORD.test(msg) && HOURS_CONTEXT_WORD.test(msg);
@@ -114,10 +114,9 @@ function detectVagueRequestIntent(msg, knowledge, hasSpecificProgramMatch) {
   if (!VAGUE_REQUEST_REGEX.test(msg)) return null;
 
   const reply =
-    `Сайн байна уу! 😊 AI Academy-д тавтай морил. 
-Одоогоор бүртгэл нь нээлттэй байгаа сургалтууд: \n\n` +
-    formatProgramList(knowledge.programs) + `\n\n` +
-    `Та хэнд зориулж сургалт хайж байна вэ? (өөртөө / хүүхдэдээ / байгууллагадаа)`;
+    `Сайн байна уу! 😊 AI Academy-д тавтай морил. \nОдоогоор бүртгэл нь нээлттэй байгаа сургалтууд: \n\n` +
+    formatProgramList(knowledge.programs) +
+    `\n\nТа хэнд зориулж сургалт хайж байна вэ? (өөртөө / хүүхдэдээ / байгууллагадаа)`;
 
   return { reply, sessionPatch: { pendingWhoFor: true } };
 }
