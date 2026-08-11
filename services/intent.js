@@ -141,6 +141,23 @@ function detectWhoForAnswerIntent(msg, knowledge, session) {
 
   return { reply, sessionPatch: { pendingWhoFor: false } };
 }
+function detectDirectCategoryIntent(msg, knowledge, hasSpecificProgramMatch) {
+  if (hasSpecificProgramMatch) return null; // a named program takes priority
+
+  let filtered = null;
+  if (KID_ANSWER_REGEX.test(msg)) filtered = knowledge.programs.filter(isKidProgram);
+  else if (COMPANY_ANSWER_REGEX.test(msg)) filtered = knowledge.programs.filter(isCompanyProgram);
+  else if (ADULT_ANSWER_REGEX.test(msg)) filtered = knowledge.programs.filter(isAdultPersonalProgram);
+
+  if (!filtered || filtered.length === 0) return null;
+
+  const reply =
+    `Насанд хүрэгчдэд зориулсан дараах хөтөлбөрүүдийн бүртгэл нээлттэй байна:\n\n` +
+    formatProgramList(filtered) +
+    `\n\nЭдгээрээс аль хөтөлбөрийн талаар дэлгэрэнгүй мэдээлэл авахыг хүсэж байна вэ?`;
+
+  return { reply, sessionPatch: { pendingWhoFor: false } };
+}
 
 // --- Public entry point ---
 // Returns null (no match — fall through to AI) or { reply, sessionPatch }
