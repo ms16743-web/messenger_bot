@@ -237,7 +237,9 @@ async function startServer() {
       console.error("⚠️ Postgres not reachable, knowledge will fall back to file:", error.message);
     }
 
-    await initSemanticCache(); // ← new line
+initSemanticCache().catch((err) =>
+      console.error("⚠️ Semantic cache init failed (non-fatal):", err.message)
+    ); // fires in the background, doesn't block startup
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

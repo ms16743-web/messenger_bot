@@ -29,17 +29,28 @@ const INTENT_CONFIG = {
 let exampleVectorCache = null; // populated once at startup, not per-request
 
 async function embedText(text) {
-  const response = await fetchFn(EMBED_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
-    body: JSON.stringify({ content: { parts: [{ text }] } }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const response = await fetchFn(EMBED_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
+      body: JSON.stringify({ content: { parts: [{ text }] } }),
+      signal: controller.signal,
+    });
   const data = await response.json();
   if (!data.embedding) {
     console.error("❌ Embedding failed for:", text, "-", JSON.stringify(data));
     return null;
   }
   return data.embedding.values;
+   } catch (error) {
+    console.error("❌ Embedding request failed/timed out for:", text, "-", error.message);
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function cosineSimilarity(a, b) {
