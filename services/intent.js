@@ -5,7 +5,7 @@ function formatDuration(program) {
 function formatFormat(program) {
   return program.format || "";
 }
-
+const { classifySemanticIntent } = require("./semantic");
 const PROGRAM_EMOJI = {
   junior_ai_engineer: "🚀",
   ai_101_online: "💻",
@@ -27,7 +27,7 @@ function formatProgramList(programs) {
 function isKidProgram(program) {
   return (program.category || "").includes("Хүүхэд");
 }
-function isCompanyProgram(program) {
+function isCompanyProgram(program) { 
   return (program.category || "").includes("байгууллага");
 }
 function isAdultPersonalProgram(program) {
@@ -102,8 +102,6 @@ function detectStaticFactIntent(msg, knowledge) {
   return null;
 }
 
-// --- Intent: vague "tell me about your programs" request ---
-
 const VAGUE_REQUEST_REGEX =
   /(мэдээлэл авъя|мэдээлэл өгөөч|хөтөлбөрийн мэдээлэл|программ.*байг|сургалт.*байг|program info|tell me about|what programs|medeelel avii|medeelel uguch|hutulbriin medeel)/i;
 
@@ -147,15 +145,38 @@ function detectWhoForAnswerIntent(msg, knowledge, session) {
 // --- Public entry point ---
 // Returns null (no match — fall through to AI) or { reply, sessionPatch }
 
-function detectIntent(msg, knowledge, session, hasSpecificProgramMatch) {
+async function detectIntent(msg, knowledge, session, hasSpecificProgramMatch) {
   const whoForAnswer = detectWhoForAnswerIntent(msg, knowledge, session);
   if (whoForAnswer) return whoForAnswer;
 
   const staticFact = detectStaticFactIntent(msg, knowledge);
   if (staticFact) return { reply: staticFact, sessionPatch: {} };
 
+  const directCategory = detectDirectCategoryIntent(msg, knowledge, hasSpecificProgramMatch);
+  if (directCategory) return directCategory;
+
   const vagueRequest = detectVagueRequestIntent(msg, knowledge, hasSpecificProgramMatch);
   if (vagueRequest) return vagueRequest;
+
+  // Nothing matched by regex — try semantic matching as a fallback,
+  // only for the two intents we've actually validated (hours, location).
+  const semanticIntent = await classifySemanticIntent(msg);
+  if (semanticIntent === "location") {
+    return { reply: `📍 ${knowledge.location}`, sessionPatch: {} };
+  }
+  if (semanticIntent === "hours") {
+    // Reuse the exact same live-hours logic as the regex path
+    const h = knowledge.office_hours;
+    if (h) {
+      const status = getOfficeStatus(h);
+      const baseInfo = `Бид ${h.working_hours.opens}-${h.working_hours.closes} цагийн хооронд ажилладаг. Үдийн цай: ${h.lunch_break.starts}-${h.lunch_break.ends}.`;
+      let reply;
+      if (status === "open") reply = `Тийм, бид яг одоо нээлттэй байгаа — тавтай морил! ${baseInfo}`;
+      else if (status === "lunch") reply = `Одоогоор үдийн завсарлагааны цаг байна (${h.lunch_break.starts}-${h.lunch_break.ends}), тул түр хүлээгээд ирвэл илүү тохиромжтой байх болно. ${baseInfo}`;
+      else reply = `Уучлаарай, яг одоо хаалттай байна. ${baseInfo}`;
+      return { reply, sessionPatch: {} };
+    }
+  }
 
   return null;
 }

@@ -148,7 +148,7 @@ async function router(userId, text) {
   const detectedPrograms = detectPrograms(message, knowledge);
   const hasRecognizedProgram = detectedPrograms.length > 0;
   const isGreetingOnly = matchesGreetingOnly(msg);
-const intentResult = detectIntent(msg, knowledge, session, hasRecognizedProgram);
+const intentResult = await detectIntent(msg, knowledge, session, hasRecognizedProgram);
   if (intentResult) {
     Object.assign(session, intentResult.sessionPatch);
     pushHistory(session, message, intentResult.reply);

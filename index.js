@@ -5,7 +5,7 @@ const axios = require("axios");
 const { router } = require("./services/router");
 const { connectRedis } = require("./services/memory");
 const { checkDb } = require("./services/db");
-
+const { initSemanticCache } = require("./services/semantic");
 const app = express();
 
 app.use(express.json());
@@ -234,11 +234,10 @@ async function startServer() {
       await checkDb();
       console.log("✅ Postgres connected successfully.");
     } catch (error) {
-      console.error(
-        "⚠️ Postgres not reachable, knowledge will fall back to file:",
-        error.message
-      );
+      console.error("⚠️ Postgres not reachable, knowledge will fall back to file:", error.message);
     }
+
+    await initSemanticCache(); // ← new line
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
