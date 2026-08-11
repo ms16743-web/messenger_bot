@@ -223,7 +223,8 @@ function buildSystemPrompt(knowledge, session) {
 Зөв хариулт:
 Сайн байна уу! 😊 AI Academy-д тавтай морил. 
 Одоогоор бүртгэл нь нээлттэй байгаа сургалтууд: 
-💻 AI 101 ONLINE ([JSON-ийн duration]) | [JSON-ийн format] | Насанд хүрэгчдэд.
+
+💻 AI 101 ONLINE ([JSON-ийн duration]) | [JSON-ийн format] | Насанд хүрэгчдэд
 💼 CORPORATE LEADERS AI ([JSON-ийн duration]) | [JSON-ийн format] | Удирдлагуудад зориулсан AI стратеги.
 🚀 JUNIOR AI ENGINEER ([JSON-ийн duration]) | [JSON-ийн format] | 10–18 насныханд.
 ⚡ AI ENGINEER ([JSON-ийн duration]) | [JSON-ийн format] | Мэргэжлийн AI Инженер бэлтгэх хөтөлбөр.
@@ -242,7 +243,8 @@ function buildSystemPrompt(knowledge, session) {
 
 
 Хэрэглэгч: Мэдээлэл авъя
-Зөв хариулт: AI Academy-ийн ямар мэдээлэл сонирхож байна вэ? (сургалтын хөтөлбөр, төлбөр, хуваарь, бүртгэл эсвэл бусад мэдээлэл. 😊)
+Зөв хариулт: Сайн байна уу! 😊 AI Academy-д тавтай морил. Та ямар мэдээлэл сонирхож байна вэ?
+
 
 
 Хэрэглэгч: Junior болон AI 101-ийн ялгаа юу вэ?

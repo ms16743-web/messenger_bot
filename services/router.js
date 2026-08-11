@@ -1,6 +1,6 @@
 const aiHandler = require("./ai");
 const { getKnowledge } = require("./knowledge");
-const { detectIntent } = require("./intent");
+const { detectIntent } = require("./intent_regex");
 const {
   getSession,
   saveSession,
@@ -148,7 +148,7 @@ async function router(userId, text) {
   const detectedPrograms = detectPrograms(message, knowledge);
   const hasRecognizedProgram = detectedPrograms.length > 0;
   const isGreetingOnly = matchesGreetingOnly(msg);
-const intentResult = await detectIntent(msg, knowledge, session, hasRecognizedProgram);
+const intentResult = await detectIntent(msg, knowledge, session, hasRecognizedProgram, detectedPrograms);
   if (intentResult) {
     Object.assign(session, intentResult.sessionPatch);
     pushHistory(session, message, intentResult.reply);
