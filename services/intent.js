@@ -80,10 +80,12 @@ function isHoursQuestion(msg) {
 
 function detectStaticFactIntent(msg, knowledge) {
   if (LOCATION_REGEX.test(msg)) {
+        console.log("🎯 Matched by: regex-location");
     return `📍 ${knowledge.location}`;
   }
 
   if (isHoursQuestion(msg)) {
+        console.log("🎯 Matched by: regex-hours");
     const h = knowledge.office_hours;
     if (!h) return null;
 
@@ -179,9 +181,11 @@ async function detectIntent(msg, knowledge, session, hasSpecificProgramMatch) {
   // only for the two intents we've actually validated (hours, location).
   const semanticIntent = await classifySemanticIntent(msg);
   if (semanticIntent === "location") {
+    console.log("🎯 Matched by: semantic-location");
     return { reply: `📍 ${knowledge.location}`, sessionPatch: {} };
   }
   if (semanticIntent === "hours") {
+        console.log("🎯 Matched by: semantic-hours");
     // Reuse the exact same live-hours logic as the regex path
     const h = knowledge.office_hours;
     if (h) {
