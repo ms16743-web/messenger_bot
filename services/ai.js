@@ -312,7 +312,7 @@ async function callGemini(url, apiKey, requestBody, attempt = 1) {
 
 async function aiHandler(text, knowledge, session = {}) {
   const apiKey = process.env.GEMINI_API_KEY;
-
+const contactPhone = knowledge?.contact?.phone || '';
   if (!apiKey) {
     console.error("❌ GEMINI_API_KEY is missing from environment variables.");
     return {
