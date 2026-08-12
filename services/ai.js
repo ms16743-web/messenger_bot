@@ -371,7 +371,7 @@ console.log(
       "| cached:", data.usageMetadata?.cachedContentTokenCount || 0,
       "| output:", data.usageMetadata?.candidatesTokenCount
     );
-    const reply = data.candidates?.[0]?.content?.parts
+    let reply = data.candidates?.[0]?.content?.parts
       ?.map((part) => part.text || "")
       .join("")
       .trim();
