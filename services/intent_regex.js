@@ -80,6 +80,15 @@ function formatHoursReply(h) {
   return `Уучлаарай, яг одоо хаалттай байна. ${baseInfo}`;
 }
 
+// Whether they ask location or hours, give both — someone asking one
+// almost always needs the other too if they're planning to visit.
+function formatLocationAndHoursReply(knowledge) {
+  const locationLine = `📍 ${knowledge.location}`;
+  const h = knowledge.office_hours;
+  if (!h) return locationLine;
+  return `${locationLine}\n\n${formatHoursReply(h)}`;
+}
+
 // --- Intent: location / office hours (static facts) ---
 
 const LOCATION_REGEX =
@@ -96,14 +105,12 @@ function isHoursQuestion(msg) {
 function detectStaticFactIntent(msg, knowledge) {
   if (LOCATION_REGEX.test(msg)) {
     console.log("🎯 Matched by: regex-location");
-    return `📍 ${knowledge.location}`;
+    return formatLocationAndHoursReply(knowledge);
   }
 
   if (isHoursQuestion(msg)) {
     console.log("🎯 Matched by: regex-hours");
-    const h = knowledge.office_hours;
-    if (!h) return null;
-    return formatHoursReply(h);
+    return formatLocationAndHoursReply(knowledge);
   }
 
   return null;
@@ -218,7 +225,7 @@ function collapseRepeatedLetters(str) {
 }
 
 const AFFIRMATION_REGEX =
-  /^(тийм|тиймээ|тэгье|за тэгье|за|за яахав|болно|за болно|ок|tiim|tiimee|za|bolno|ok|yes)$/i;
+  /^(тийм|тиймээ|тэгье|за тэгье|за|за яахав|болно|за болно|ок|tiim|tiimee|za|zaa|bolno|ok|yes|tegi|tegii|tegiy)$/i;
 
 function isAffirmation(msg) {
   return AFFIRMATION_REGEX.test(collapseRepeatedLetters(msg.trim()));
@@ -337,9 +344,11 @@ const VAGUE_REQUEST_REGEX =
 function detectVagueRequestIntent(msg, knowledge, hasSpecificProgramMatch) {
   if (hasSpecificProgramMatch) return null;
   if (!VAGUE_REQUEST_REGEX.test(msg)) return null;
+  return buildVagueRequestReply();
+}
 
+function buildVagueRequestReply() {
   const reply = `Сайн байна уу! 😊 AI Academy-д тавтай морил. Та ямар мэдээлэл сонирхож байна вэ?`;
-
   return { reply, sessionPatch: { pendingWhoFor: true, awaitingFieldChoice: false } };
 }
 
@@ -420,41 +429,44 @@ async function detectIntent(msg, knowledge, session, hasSpecificProgramMatch, de
 
   if (semanticIntent === "location") {
     console.log("🎯 Matched by: semantic-location");
-    return { reply: `📍 ${knowledge.location}`, sessionPatch: {} };
+    return { reply: formatLocationAndHoursReply(knowledge), sessionPatch: {} };
   }
 
   if (semanticIntent === "hours") {
-    const h = knowledge.office_hours;
-    if (h) {
-      console.log("🎯 Matched by: semantic-hours");
-      return { reply: formatHoursReply(h), sessionPatch: {} };
-    }
+    console.log("🎯 Matched by: semantic-hours");
+    return { reply: formatLocationAndHoursReply(knowledge), sessionPatch: {} };
   }
 
   if (semanticIntent === "vague_request") {
-    const vague = detectVagueRequestIntent(msg, knowledge, false);
-    if (vague) {
-      console.log("🎯 Matched by: semantic-vague_request");
-      return vague;
-    }
+    console.log("🎯 Matched by: semantic-vague_request");
+    return buildVagueRequestReply();
   }
 
   if (semanticIntent === "group_request") {
-    const group = detectDirectCategoryIntent(msg, knowledge, false);
-    if (group) {
-      console.log("🎯 Matched by: semantic-group_request");
-      return group;
-    }
+    // We know the message is ABOUT an audience group, but not WHICH one —
+    // that's exactly the ambiguity the (already-failed) KID/ADULT/COMPANY
+    // regex can't resolve either, so re-running it here would be as useless
+    // as the vague_request bug above. Ask directly instead — this reuses
+    // the same pendingWhoFor flow detectWhoForAnswerIntent already handles.
+    console.log("🎯 Matched by: semantic-group_request (clarify)");
+    return {
+      reply: "Та хэнд зориулж сургалт хайж байна вэ? (өөртөө / хүүхдэдээ / байгууллагадаа)",
+      sessionPatch: { pendingWhoFor: true, awaitingFieldChoice: false },
+    };
   }
 
   if (semanticIntent === "exact_request" && session?.selectedProgram) {
     const program = knowledge.programs.find((p) => p.id === session.selectedProgram);
     if (program) {
-      const fieldReply = detectProgramFieldIntent(msg, program);
-      if (fieldReply) {
-        console.log("🎯 Matched by: semantic-exact_request");
-        return { reply: fieldReply, sessionPatch: { selectedProgram: program.id } };
-      }
+      // Same trap as above: FIELD_PATTERNS regex already failed against this
+      // message (that's why we're in the fallback), so re-testing it here
+      // would always return null. We know it's a detail question about the
+      // program in context, just not which field — ask, same as the overview.
+      console.log("🎯 Matched by: semantic-exact_request (clarify)");
+      return {
+        reply: `Үнэ, хуваарь, агуулга, шаардлага, сертификатын аль нэгийг дэлгэрэнгүй мэдмээр байна уу?`,
+        sessionPatch: { awaitingFieldChoice: true },
+      };
     }
   }
 
