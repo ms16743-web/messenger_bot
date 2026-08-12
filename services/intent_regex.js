@@ -72,7 +72,7 @@ function formatHoursReply(h) {
   const baseInfo = `Бид ${h.working_hours.opens}-${h.working_hours.closes} цагийн хооронд ажилладаг. Үдийн цай: ${h.lunch_break.starts}-${h.lunch_break.ends}.`;
 
   if (status === "open") {
-    return `Тийм, бид яг одоо нээлттэй байгаа — тавтай морил! ${baseInfo}`;
+    return `Тийм, бид яг одоо нээлттэй байгаа! ${baseInfo}`;
   }
   if (status === "lunch") {
     return `Одоогоор үдийн завсарлагааны цаг байна (${h.lunch_break.starts}-${h.lunch_break.ends}), тул түр хүлээгээд ирвэл илүү тохиромжтой байх болно. ${baseInfo}`;
@@ -185,7 +185,8 @@ function detectProgramFieldIntent(msg, program) {
   const config = FIELD_PATTERNS[fieldName];
   const value = getFirstAvailableField(program, config.keys);
   if (!value) return null;
-
+const emoji = PROGRAM_EMOJI[program.id] || "✦";
+  const name = program.display_label || program.name;
   console.log("🎯 Matched by: regex-program-field", program.id, fieldName);
   return `${config.label} — ${program.display_label || program.name}\n${value}`;
 }
@@ -375,10 +376,28 @@ function detectExactProgramIntent(msg, knowledge, session, detectedPrograms) {
     return null;
   }
 
-  const fieldReply = detectProgramFieldIntent(msg, program);
-  if (fieldReply) {
+  const fieldName = matchFieldName(msg);
+  if (fieldName) {
+    const fieldReply = detectProgramFieldIntent(msg, program);
+    if (fieldReply) {
+      return {
+        reply: fieldReply,
+        sessionPatch: {
+          selectedProgram: program.id,
+          pendingWhoFor: false,
+          pendingFieldQuestion: null,
+          awaitingFieldChoice: false,
+        },
+      };
+    }
+
+    // Field was recognized, but the knowledge base has no value for it —
+    // say so explicitly instead of silently falling through to the overview,
+    // which made it look like the bot ignored the question.
+    console.log("🎯 Matched by: regex-program-field-missing-data", program.id, fieldName);
+    const config = FIELD_PATTERNS[fieldName];
     return {
-      reply: fieldReply,
+      reply: `Уучлаарай, "${program.display_label || program.name}" хөтөлбөрийн ${config.label.replace(/^\S+\s/, "")}-ийн мэдээлэл одоогоор бэлэн биш байна. Дэлгэрэнгүй мэдээлэл авахыг хүсвэл утасны дугаараа үлдээгээрэй, манай зөвлөх тантай холбогдох болно 📞`,
       sessionPatch: {
         selectedProgram: program.id,
         pendingWhoFor: false,
@@ -505,6 +524,10 @@ async function detectIntent(msg, knowledge, session, hasSpecificProgramMatch, de
   // territory (e.g. "X vs Y, what's the difference"). No regex or semantic
   // branch below is equipped to answer that correctly — go straight to
   // Gemini rather than letting any branch guess based on stale session state.
+   if (!knowledge?.programs || knowledge.programs.length === 0) {
+    console.log("🎯 Skipping regex/semantic — knowledge base unavailable, routing to Gemini");
+    return null;
+  }
   if (detectedPrograms && detectedPrograms.length > 1) {
     console.log("🎯 Skipping regex/semantic — multi-program message, routing to Gemini:",
       detectedPrograms.map((p) => p.id));
