@@ -1,153 +1,464 @@
-const fetchFn = typeof fetch === "function" ? fetch : require("node-fetch");
+function formatDuration(program) {
+  return program.duration || "";
+}
 
-const API_KEY = process.env.GEMINI_API_KEY;
-const EMBED_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent";
+function formatFormat(program) {
+  return program.format || "";
+}
 
-// Example phrases per intent, validated against real customer messages
-// from production logs. Thresholds below were picked from that testing —
-// see the margin note next to each.
-const INTENT_CONFIG = {
-  hours: {
-    examples: [
-      "ажиллах цагийн хуваарь хэд вэ",
-      "tsagiin huviar hed ve",
-      "office ajlin tsag hed ve",
-    ],
-    threshold: 0.75, // margin was tight (~0.07) in testing — revisit if false positives show up
+const { classifySemanticIntent } = require("./semantic");
+
+const PROGRAM_EMOJI = {
+  junior_ai_engineer: "🚀",
+  ai_101_online: "💻",
+  ai_engineer: "⚡",
+  corporate_ai: "💼",
+};
+
+function formatProgramLine(program) {
+  const emoji = PROGRAM_EMOJI[program.id] || "✦";
+  const name = program.display_label || program.name;
+  const tagline = program.tagline || program.category;
+  return `${emoji} ${name.toUpperCase()} (${formatDuration(program)}) | ${formatFormat(program)} | ${tagline}`;
+}
+
+function formatProgramList(programs) {
+  return programs.map(formatProgramLine).join("\n");
+}
+
+function isKidProgram(program) {
+  return (program.category || "").includes("Хүүхэд");
+}
+function isCompanyProgram(program) {
+  return (program.category || "").includes("байгууллага");
+}
+function isAdultPersonalProgram(program) {
+  return (program.category || "").includes("Насанд хүрэгч") && !isCompanyProgram(program);
+}
+
+// --- Live office-hours calculation (Ulaanbaatar time, not server time) ---
+
+function getUlaanbaatarMinutesNow() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Ulaanbaatar",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const hour = Number(parts.find((p) => p.type === "hour").value);
+  const minute = Number(parts.find((p) => p.type === "minute").value);
+  return hour * 60 + minute;
+}
+
+function timeToMinutes(str) {
+  const [h, m] = str.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function getOfficeStatus(officeHours) {
+  const nowMin = getUlaanbaatarMinutesNow();
+  const opens = timeToMinutes(officeHours.working_hours.opens);
+  const closes = timeToMinutes(officeHours.working_hours.closes);
+  const lunchStart = timeToMinutes(officeHours.lunch_break.starts);
+  const lunchEnd = timeToMinutes(officeHours.lunch_break.ends);
+
+  if (nowMin < opens || nowMin >= closes) return "closed";
+  if (nowMin >= lunchStart && nowMin < lunchEnd) return "lunch";
+  return "open";
+}
+
+function formatHoursReply(h) {
+  const status = getOfficeStatus(h);
+  const baseInfo = `Бид ${h.working_hours.opens}-${h.working_hours.closes} цагийн хооронд ажилладаг. Үдийн цай: ${h.lunch_break.starts}-${h.lunch_break.ends}.`;
+
+  if (status === "open") {
+    return `Тийм, бид яг одоо нээлттэй байгаа — тавтай морил! ${baseInfo}`;
+  }
+  if (status === "lunch") {
+    return `Одоогоор үдийн завсарлагааны цаг байна (${h.lunch_break.starts}-${h.lunch_break.ends}), тул түр хүлээгээд ирвэл илүү тохиромжтой байх болно. ${baseInfo}`;
+  }
+  return `Уучлаарай, яг одоо хаалттай байна. ${baseInfo}`;
+}
+
+// --- Intent: location / office hours (static facts) ---
+
+const LOCATION_REGEX =
+  /(байршил|хаяг|хаана байр|хаана орш|та нар хаана|энэ хаана|bairsh|bayrsh|brshil|brshl|hayg|hayag|hayig|haan[a]?\s*bai|haana\s*bai|hana\s*bai|haanve|haan\s*bdg|hana\s*bdg|address|location|where.*(you|located)|where\s+is)/i;
+
+const HOURS_TIME_WORD = /(tsag|цаг)/i;
+const HOURS_CONTEXT_WORD =
+  /(huviar|huvira|huvari|huvaari|хуваарь|ажиллах|ажлын|ajillah|ajlin|ajliin|hed(ees)?|hze|hz|хэд|open|hours|walk\s*in|ирж бол|irj\s*bol)/i;
+
+function isHoursQuestion(msg) {
+  return HOURS_TIME_WORD.test(msg) && HOURS_CONTEXT_WORD.test(msg);
+}
+
+function detectStaticFactIntent(msg, knowledge) {
+  if (LOCATION_REGEX.test(msg)) {
+    console.log("🎯 Matched by: regex-location");
+    return `📍 ${knowledge.location}`;
+  }
+
+  if (isHoursQuestion(msg)) {
+    console.log("🎯 Matched by: regex-hours");
+    const h = knowledge.office_hours;
+    if (!h) return null;
+    return formatHoursReply(h);
+  }
+
+  return null;
+}
+
+// --- Intent: exact program + optional detail field (regex layer) ---
+
+// Builds a Unicode-boundary-safe alternation so short romanized tokens
+// (e.g. "tulbur" = payment) don't accidentally match as a substring of an
+// unrelated longer word (e.g. "hutulbur" = program). \p{L}/\p{N} cover both
+// Cyrillic and Latin letters, unlike \b which only understands ASCII.
+function buildBoundaryRegex(words) {
+  const escaped = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return new RegExp(`(?<![\\p{L}\\p{N}])(?:${escaped.join("|")})(?![\\p{L}\\p{N}])`, "iu");
+}
+
+const FIELD_PATTERNS = {
+  price: {
+    regex: buildBoundaryRegex(["үнэ", "төлбөр", "хэдэн төгрөг", "price", "pricing", "une", "tulbur"]),
+    keys: ["price", "price_note"],
+    label: "💰 Үнэ",
   },
-  location: {
-    examples: [
-      "таны оффис хаана байдаг вэ",
-      "office haana bdg ve",
-      "bairshil haana",
-    ],
-    threshold: 0.72, // margin was comfortable (~0.15) in testing
+  schedule: {
+    regex: buildBoundaryRegex([
+      "хуваарь", "хэзээ эхэл", "хэзээ болох", "хэзээнээс", "цагийн хуваарь",
+      "schedule", "hezee", "hezeenees", "hzenes", "hzee", "ehleh", "ehlene", "eхлэх",
+    ]),
+    keys: ["schedule", "schedule_note", "duration"],
+    label: "🗓 Хуваарь",
   },
-  vague_request: {
-    examples: [
-      "таны сургалтуудын талаар мэдээлэл өгөөч",
-      "ямар хөтөлбөрүүд байдаг вэ",
-      "hutulbriin medeelel avii",
-      "what programs do you offer",
-      "мэдээлэл авъя",
-      "medeelel avii",
-    ],
-    threshold: 0.72, // was accidentally commented out — vague_request could never match. Restored, same margin as the others.
+  curriculum: {
+    regex: buildBoundaryRegex([
+      "агуулга", "сэдэв", "хичээлийн төлөвлөгөө", "curriculum", "syllabus", "юу заа", "юу сурга",
+    ]),
+    keys: ["curriculum_summary", "skills"],
+    label: "📚 Агуулга",
   },
-  group_request: {
-    examples: [
-      "nasand huregchded yamr progrm bga ve",
-      "huuuhedde surgalt sonirhoj bna",
-      "ahmad nastanguud yamar surgaltand orj boloh ve",
-      "baigulaga, company-d ajillah humuust yamar surgalt bga ve",
-      "хүүхдэдээ сургалт хайж байна",
-      "байгууллагадаа сургалт хайж байна",
-    ],
-    threshold: 0.72, // margin was comfortable (~0.15) in testing
+  requirements: {
+    regex: buildBoundaryRegex([
+      "шаардлага", "орох болзол", "requirement", "prerequisite", "урьдчилсан мэдлэг",
+    ]),
+    keys: ["prerequisites", "requirements"],
+    label: "✅ Шаардлага",
   },
-  exact_request: {
-    examples: [
-      "summer bootcamp medeelel avii",
-      "ai 101 online surgalt iluu medeelel aviy",
-      "ai engineer program yamr ve",
-      "corporate ai surgalt yamar ve",
-      "энэ хөтөлбөрийн үнэ хэд вэ",
-      "энэ сургалт хэзээ эхэлдэг вэ",
-    ],
-    threshold: 0.72, // margin was comfortable (~0.15) in testing
+  certificate: {
+    regex: buildBoundaryRegex(["гэрчилгээ", "сертификат", "certificate", "diploma"]),
+    keys: ["certificate"],
+    label: "🎓 Гэрчилгээ",
   },
 };
 
-const DEFAULT_THRESHOLD = 0.72; // safety net — if a config entry ever loses its
-// threshold again (like vague_request did), fall back to this instead of
-// silently disabling that intent (undefined threshold means "score >= undefined"
-// which is always false, so the intent can never win).
+function getFirstAvailableField(program, keys) {
+  for (const key of keys) {
+    const value = program[key];
+    if (!value) continue;
+    return Array.isArray(value) ? value.join("; ") : String(value);
+  }
+  return null;
+}
 
-let exampleVectorCache = null; // populated once at startup, not per-request
+function matchFieldName(msg) {
+  for (const [fieldName, config] of Object.entries(FIELD_PATTERNS)) {
+    if (config.regex.test(msg)) return fieldName;
+  }
+  return null;
+}
 
-async function embedText(text) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
+// Returns a formatted reply string, or null if no detail-word matched, or
+// null if a detail-word matched but the program has no data for it.
+function detectProgramFieldIntent(msg, program) {
+  const fieldName = matchFieldName(msg);
+  if (!fieldName) return null;
 
-  try {
-    const response = await fetchFn(EMBED_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
-      body: JSON.stringify({ content: { parts: [{ text }] } }),
-      signal: controller.signal,
-    });
-    const data = await response.json();
-    if (!data.embedding) {
-      console.error("❌ Embedding failed for:", text, "-", JSON.stringify(data));
-      return null;
+  const config = FIELD_PATTERNS[fieldName];
+  const value = getFirstAvailableField(program, config.keys);
+  if (!value) return null;
+
+  console.log("🎯 Matched by: regex-program-field", program.id, fieldName);
+  return `${config.label} — ${program.display_label || program.name}\n${value}`;
+}
+
+function formatProgramOverview(program) {
+  const emoji = PROGRAM_EMOJI[program.id] || "✦";
+  const name = program.display_label || program.name;
+  return (
+    `${emoji} ${name.toUpperCase()}\n\n` +
+    `⏱️ Хугацаа: ${program.duration || "Мэдээлэл байхгүй"}\n` +
+    `💻 Формат: ${program.format || "Мэдээлэл байхгүй"}\n\n` +
+    `${program.description || ""}\n\n` +
+    `Үнэ, хуваарь, агуулга, шаардлага, сертификатын аль нэгийг дэлгэрэнгүй мэдмээр байна уу?`
+  );
+}
+
+// Every field question ends with "аль нэгийг мэдмээр байна уу?" — if the
+// customer answers with a plain "тийм/за/ok" instead of naming a field,
+// that means "yes, all of them," not "which one." Give everything.
+function formatAllFieldsReply(program) {
+  const name = program.display_label || program.name;
+  const lines = [`За, тэгвэл ${name} хөтөлбөрийн дэлгэрэнгүй мэдээллийг хүргэе:\n`];
+
+  for (const config of Object.values(FIELD_PATTERNS)) {
+    const value = getFirstAvailableField(program, config.keys);
+    if (value) lines.push(`✦ ${config.label.replace(/^\S+\s/, "")}: ${value}`);
+  }
+
+  lines.push(`\nТа энэ хөтөлбөрт бүртгүүлэх хүсэлтэй байна уу?`);
+  return lines.join("\n");
+}
+
+function collapseRepeatedLetters(str) {
+  return str.replace(/([a-zа-яё])\1+/gi, "$1");
+}
+
+const AFFIRMATION_REGEX =
+  /^(тийм|тиймээ|тэгье|за тэгье|за|за яахав|болно|за болно|ок|tiim|tiimee|za|bolno|ok|yes)$/i;
+
+function isAffirmation(msg) {
+  return AFFIRMATION_REGEX.test(collapseRepeatedLetters(msg.trim()));
+}
+
+// The overview ("Үнэ, хуваарь, ... аль нэгийг мэдмээр байна уу?") sets
+// session.awaitingFieldChoice. If the very next message is a bare "yes" —
+// not a named field, not a new program — answer with everything.
+function detectFieldChoiceAffirmationIntent(msg, knowledge, session, detectedPrograms) {
+  if (!session?.awaitingFieldChoice) return null;
+  if (detectedPrograms && detectedPrograms.length > 0) return null; // new program named — let that branch handle it
+  if (!isAffirmation(msg)) return null;
+
+  const program =
+    session.selectedProgram && knowledge.programs.find((p) => p.id === session.selectedProgram);
+  if (!program) return null;
+
+  console.log("🎯 Matched by: regex-field-choice-affirmation", program.id);
+  return {
+    reply: formatAllFieldsReply(program),
+    sessionPatch: { awaitingFieldChoice: false, awaitingRegistrationConfirmation: true },
+  };
+}
+
+// If the message clearly names a different audience group (kid/adult/company)
+// with no program explicitly named, don't let a stale session.selectedProgram
+// hijack it — let it fall through to the group/category branch instead.
+function looksLikeGroupRequest(msg) {
+  return (
+    KID_ANSWER_REGEX.test(msg) ||
+    COMPANY_ANSWER_REGEX.test(msg) ||
+    ADULT_ANSWER_REGEX.test(msg)
+  );
+}
+
+function detectExactProgramIntent(msg, knowledge, session, detectedPrograms) {
+  const namedNow = detectedPrograms && detectedPrograms.length === 1 ? detectedPrograms[0] : null;
+
+  const canUseStaleSession = !namedNow && !looksLikeGroupRequest(msg);
+  const program =
+    namedNow ||
+    (canUseStaleSession && session?.selectedProgram &&
+      knowledge.programs.find((p) => p.id === session.selectedProgram)) ||
+    null;
+
+  if (!program) {
+    // No program named and none in context. If they clearly asked a detail
+    // question anyway ("үнэ хэд вэ?" cold), don't guess and don't burn a
+    // Gemini call — ask which program instead.
+    const fieldName = matchFieldName(msg);
+    if (fieldName) {
+      console.log("🎯 Matched by: regex-field-no-program →", fieldName);
+      return {
+        reply: "Аль хөтөлбөрийн талаар асууж байна вэ?",
+        sessionPatch: { pendingFieldQuestion: fieldName },
+      };
     }
-    return data.embedding.values;
-  } catch (error) {
-    console.error("❌ Embedding request failed/timed out for:", text, "-", error.message);
     return null;
-  } finally {
-    clearTimeout(timeoutId);
   }
+
+  const fieldReply = detectProgramFieldIntent(msg, program);
+  if (fieldReply) {
+    return {
+      reply: fieldReply,
+      sessionPatch: {
+        selectedProgram: program.id,
+        pendingWhoFor: false,
+        pendingFieldQuestion: null,
+        awaitingFieldChoice: false,
+      },
+    };
+  }
+
+  // No detail word. Only give the full overview when the program was
+  // actually named in THIS message — an unrelated follow-up shouldn't
+  // re-dump the overview just because selectedProgram is still set.
+  if (!namedNow) return null;
+
+  console.log("🎯 Matched by: regex-program-overview", program.id);
+  return {
+    reply: formatProgramOverview(program),
+    sessionPatch: {
+      selectedProgram: program.id,
+      pendingWhoFor: false,
+      pendingFieldQuestion: null,
+      awaitingFieldChoice: true, // the overview ends by asking "which field?" — track it
+    },
+  };
 }
 
-function cosineSimilarity(a, b) {
-  let dot = 0, normA = 0, normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+// Answers a pending "аль хөтөлбөрийн талаар асууж байна вэ?" once the user
+// names a program in their next message.
+function detectPendingFieldAnswerIntent(msg, knowledge, session, detectedPrograms) {
+  if (!session?.pendingFieldQuestion) return null;
+  if (!detectedPrograms || detectedPrograms.length !== 1) return null;
+
+  const program = detectedPrograms[0];
+  const config = FIELD_PATTERNS[session.pendingFieldQuestion];
+  if (!config) return null;
+
+  const value = getFirstAvailableField(program, config.keys);
+  if (!value) return null;
+
+  console.log("🎯 Matched by: regex-pending-field-answer", program.id, session.pendingFieldQuestion);
+  return {
+    reply: `${config.label} — ${program.display_label || program.name}\n${value}`,
+    sessionPatch: { selectedProgram: program.id, pendingFieldQuestion: null },
+  };
 }
 
-// Call this once at server startup — embeds all example phrases and caches
-// the vectors in memory, so runtime classification never re-embeds them.
-async function initSemanticCache() {
-  if (!API_KEY) {
-    console.warn("⚠️ GEMINI_API_KEY missing — semantic intent matching disabled.");
-    return;
+// --- Intent: vague info request ("мэдээлэл авъя") ---
+
+const VAGUE_REQUEST_REGEX =
+  /(мэдээлэл авъя|мэдээлэл өгөөч|хөтөлбөрийн мэдээлэл|программ.*байг|сургалт.*байг|program info|tell me about|what programs|medeelel avii|medeelel uguch|hutulbriin medeel)/i;
+
+function detectVagueRequestIntent(msg, knowledge, hasSpecificProgramMatch) {
+  if (hasSpecificProgramMatch) return null;
+  if (!VAGUE_REQUEST_REGEX.test(msg)) return null;
+
+  const reply = `Сайн байна уу! 😊 AI Academy-д тавтай морил. Та ямар мэдээлэл сонирхож байна вэ?`;
+
+  return { reply, sessionPatch: { pendingWhoFor: true, awaitingFieldChoice: false } };
+}
+
+// --- Intent: answering "who is this for?" / group requests ---
+
+const KID_ANSWER_REGEX = /(хүүхэд|хүүхдэдээ|huuhed|huuhedde|huhed|10.?18|өсвөр|kid|child)/i;
+const COMPANY_ANSWER_REGEX = /(байгууллага|компани|compand|company|corporate)/i;
+const ADULT_ANSWER_REGEX = /(өөртөө|uurtuu|намайг|би өөрөө|adult|myself|for me|насанд хүрэгч|nasand huregch)/i;
+
+function detectWhoForAnswerIntent(msg, knowledge, session) {
+  if (!session?.pendingWhoFor) return null;
+
+  let filtered = null;
+  if (KID_ANSWER_REGEX.test(msg)) filtered = knowledge.programs.filter(isKidProgram);
+  else if (COMPANY_ANSWER_REGEX.test(msg)) filtered = knowledge.programs.filter(isCompanyProgram);
+  else if (ADULT_ANSWER_REGEX.test(msg)) filtered = knowledge.programs.filter(isAdultPersonalProgram);
+
+  if (!filtered || filtered.length === 0) return null;
+
+  const reply =
+    formatProgramList(filtered) +
+    `\n\nЭдгээр хөтөлбөрүүдээс аль талаар нь илүү дэлгэрэнгүй мэдээлэл авахыг хүсэж байна вэ? 😊`;
+
+  return { reply, sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+}
+
+function detectDirectCategoryIntent(msg, knowledge, hasSpecificProgramMatch) {
+  if (hasSpecificProgramMatch) return null;
+
+  let filtered = null;
+  if (KID_ANSWER_REGEX.test(msg)) filtered = knowledge.programs.filter(isKidProgram);
+  else if (COMPANY_ANSWER_REGEX.test(msg)) filtered = knowledge.programs.filter(isCompanyProgram);
+  else if (ADULT_ANSWER_REGEX.test(msg)) filtered = knowledge.programs.filter(isAdultPersonalProgram);
+
+  if (!filtered || filtered.length === 0) return null;
+
+  const reply =
+    `Дараах хөтөлбөрүүдийн бүртгэл нээлттэй байна:\n\n` +
+    formatProgramList(filtered) +
+    `\n\nЭдгээрээс аль хөтөлбөрийн талаар дэлгэрэнгүй мэдээлэл авахыг хүсэж байна вэ?`;
+
+  return { reply, sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+}
+
+// --- Public entry point ---
+// Returns null (no match — fall through to AI) or { reply, sessionPatch }
+
+async function detectIntent(msg, knowledge, session, hasSpecificProgramMatch, detectedPrograms) {
+  // 1. Answer to a pending clarifying question takes top priority
+  const pendingField = detectPendingFieldAnswerIntent(msg, knowledge, session, detectedPrograms);
+  if (pendingField) return pendingField;
+
+  // "Yes" to "which field do you want?" means "all of them," not "which."
+  const fieldChoiceAffirmation = detectFieldChoiceAffirmationIntent(msg, knowledge, session, detectedPrograms);
+  if (fieldChoiceAffirmation) return fieldChoiceAffirmation;
+
+  const whoForAnswer = detectWhoForAnswerIntent(msg, knowledge, session);
+  if (whoForAnswer) return whoForAnswer;
+
+  // 2. location / hours — static facts
+  const staticFact = detectStaticFactIntent(msg, knowledge);
+  if (staticFact) return { reply: staticFact, sessionPatch: {} };
+
+  // 3. exact program (named now, or carried over) ± detail field
+  const exactProgram = detectExactProgramIntent(msg, knowledge, session, detectedPrograms);
+  if (exactProgram) return exactProgram;
+
+  // 4. group / category request (kids / adult / company), no program named
+  const directCategory = detectDirectCategoryIntent(msg, knowledge, hasSpecificProgramMatch);
+  if (directCategory) return directCategory;
+
+  // 5. vague "give me info" request
+  const vagueRequest = detectVagueRequestIntent(msg, knowledge, hasSpecificProgramMatch);
+  if (vagueRequest) return vagueRequest;
+
+  // Nothing matched by regex — try semantic matching as a fallback.
+  const semanticIntent = await classifySemanticIntent(msg);
+
+  if (semanticIntent === "location") {
+    console.log("🎯 Matched by: semantic-location");
+    return { reply: `📍 ${knowledge.location}`, sessionPatch: {} };
   }
 
-  const cache = {};
-  for (const [intentName, config] of Object.entries(INTENT_CONFIG)) {
-    const vectors = await Promise.all(config.examples.map(embedText));
-    const threshold = typeof config.threshold === "number" ? config.threshold : DEFAULT_THRESHOLD;
-    if (typeof config.threshold !== "number") {
-      console.warn(`⚠️ Intent "${intentName}" has no numeric threshold — using default ${DEFAULT_THRESHOLD}.`);
+  if (semanticIntent === "hours") {
+    const h = knowledge.office_hours;
+    if (h) {
+      console.log("🎯 Matched by: semantic-hours");
+      return { reply: formatHoursReply(h), sessionPatch: {} };
     }
-    cache[intentName] = { vectors: vectors.filter(Boolean), threshold };
   }
-  exampleVectorCache = cache;
-  console.log("✅ Semantic intent cache initialized:", Object.keys(cache).join(", "));
-}
 
-// Returns the matched intent name (one of the INTENT_CONFIG keys) or null.
-// Only called as a fallback when regex already found nothing — see intent_regex.js.
-async function classifySemanticIntent(msg) {
-  if (!exampleVectorCache) return null; // cache not ready — fail safe, fall through to AI
+  if (semanticIntent === "vague_request") {
+    const vague = detectVagueRequestIntent(msg, knowledge, false);
+    if (vague) {
+      console.log("🎯 Matched by: semantic-vague_request");
+      return vague;
+    }
+  }
 
-  const msgVector = await embedText(msg);
-  if (!msgVector) return null;
+  if (semanticIntent === "group_request") {
+    const group = detectDirectCategoryIntent(msg, knowledge, false);
+    if (group) {
+      console.log("🎯 Matched by: semantic-group_request");
+      return group;
+    }
+  }
 
-  let bestIntent = null;
-  let bestScore = 0;
-
-  for (const [intentName, { vectors, threshold }] of Object.entries(exampleVectorCache)) {
-    for (const vec of vectors) {
-      const score = cosineSimilarity(vec, msgVector);
-      if (score > bestScore && score >= threshold) {
-        bestScore = score;
-        bestIntent = intentName;
+  if (semanticIntent === "exact_request" && session?.selectedProgram) {
+    const program = knowledge.programs.find((p) => p.id === session.selectedProgram);
+    if (program) {
+      const fieldReply = detectProgramFieldIntent(msg, program);
+      if (fieldReply) {
+        console.log("🎯 Matched by: semantic-exact_request");
+        return { reply: fieldReply, sessionPatch: { selectedProgram: program.id } };
       }
     }
   }
 
-  if (bestIntent) {
-    console.log(`🔎 Semantic match: ${bestIntent} (score ${bestScore.toFixed(3)})`);
-  }
-
-  return bestIntent;
+  return null;
 }
 
-module.exports = { initSemanticCache, classifySemanticIntent };
+module.exports = { detectIntent };
