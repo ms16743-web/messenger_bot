@@ -58,6 +58,7 @@ function extractPhoneNumber(message) {
 function collapseRepeatedLetters(str) {
   return str.replace(/([a-zа-яё])\1+/gi, "$1");
 }
+
 const GREETING_ONLY_LIST = [
   "сайн байна уу", "сайн уу", "сайн", "сайна", "сайн даа",
   "мэнд байна уу", "мэнд", "мэндлээ", "менде",
@@ -95,8 +96,13 @@ function isClosingMessage(normalizedMsg) {
   return CLOSING_PATTERNS.some((pattern) => pattern.test(normalizedMsg));
 }
 
+// Compositional instead of enumerated: an optional "за"/"za" prefix plus one
+// affirmation word, so multi-token replies like "za tegi" match without
+// needing every za+word combo spelled out individually. Run through
+// collapseRepeatedLetters at the call site so doubled-letter typos
+// ("zaaa", "teegii") are tolerated the same way greetings already are.
 const AFFIRMATION_ONLY_REGEX =
-  /^(тийм|тиймээ|тэгье|за тэгье|за|за яахав|болно|за болно|ок|tiim|tiimee|za|bolno|ok|yes)$/;
+  /^(за\s+|za\s+)?(тийм|тиймээ|тэгье|яахав|болно|ок|tiim|tiimee|za|bolno|ok|yes|tegi|tegii|tegiy)$/;
 
 const REGISTRATION_QUESTION_MARKER = "бүртгүүлэх хүсэлтэй байна уу";
 
@@ -136,7 +142,12 @@ async function router(userId, text) {
     return { reply, truncated: false };
   }
 
-  if (session.awaitingRegistrationConfirmation && AFFIRMATION_ONLY_REGEX.test(msg)) {
+  // Uses collapseRepeatedLetters so typo/elongation variants of "za tegi"
+  // ("za tegii", "zaaa tegi", etc.) match the same way greetings already do.
+  if (
+    session.awaitingRegistrationConfirmation &&
+    AFFIRMATION_ONLY_REGEX.test(collapseRepeatedLetters(msg))
+  ) {
     session.awaitingRegistrationConfirmation = false;
     session.awaitingPhone = true;
 
@@ -148,7 +159,7 @@ async function router(userId, text) {
   const detectedPrograms = detectPrograms(message, knowledge);
   const hasRecognizedProgram = detectedPrograms.length > 0;
   const isGreetingOnly = matchesGreetingOnly(msg);
-const intentResult = await detectIntent(msg, knowledge, session, hasRecognizedProgram, detectedPrograms);
+  const intentResult = await detectIntent(msg, knowledge, session, hasRecognizedProgram, detectedPrograms);
   if (intentResult) {
     Object.assign(session, intentResult.sessionPatch);
     pushHistory(session, message, intentResult.reply);

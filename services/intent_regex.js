@@ -251,7 +251,9 @@ function detectFieldChoiceAffirmationIntent(msg, knowledge, session, detectedPro
 const KID_ANSWER_REGEX = /(хүүхэд|хүүхдэдээ|huuhed|huuhedde|huhed|10.?18|өсвөр|kid|child)/i;
 const COMPANY_ANSWER_REGEX = /(байгууллага|компани|compand|company|corporate)/i;
 const EXPLICIT_ADULT_REGEX = /(насанд хүрэгч|nasand huregch|18\+|over 18)/i;
-const SELF_REFERENCE_REGEX = /(өөртөө|uurtuu|намайг|би өөрөө|myself|for me|adult)/i;
+// "uurtu+" (not the fixed spelling "uurtuu") tolerates the dropped-trailing-
+// letter typo family, e.g. "uurtu" instead of "uurtuu".
+const SELF_REFERENCE_REGEX = /(өөртөө|uurtu+|намайг|би өөрөө|myself|for me|adult)/i;
 const AGE_NUMBER_REGEX = /(\d{1,2})\s*(nas|настай|nastai)/i;
 
 function extractAge(msg) {
@@ -264,6 +266,19 @@ function programListReply(filtered) {
     formatProgramList(filtered) +
     `\n\nЭдгээрээс аль хөтөлбөрийн талаар дэлгэрэнгүй мэдээлэл авахыг хүсэж байна вэ?`
   );
+}
+
+// If there's only one program in the filtered set, there's nothing to choose
+// between — go straight to its overview instead of asking "which one?" again.
+function respondWithFilteredPrograms(filtered) {
+  if (filtered.length === 1) {
+    const program = filtered[0];
+    return {
+      reply: formatProgramOverview(program),
+      sessionPatch: { selectedProgram: program.id, pendingWhoFor: false, awaitingFieldChoice: true },
+    };
+  }
+  return { reply: programListReply(filtered), sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
 }
 
 // If the message clearly names/implies an audience (kid/company/explicit
@@ -299,7 +314,8 @@ function detectAgeClarificationAnswerIntent(msg, knowledge, session) {
   }
 
   console.log("🎯 Matched by: regex-age-clarification-answer");
-  return { reply: programListReply(filtered), sessionPatch: { pendingAgeClarification: false } };
+  const result = respondWithFilteredPrograms(filtered);
+  return { ...result, sessionPatch: { ...result.sessionPatch, pendingAgeClarification: false } };
 }
 
 function detectExactProgramIntent(msg, knowledge, session, detectedPrograms) {
@@ -396,17 +412,17 @@ function detectWhoForAnswerIntent(msg, knowledge, session) {
   if (KID_ANSWER_REGEX.test(msg)) {
     const filtered = knowledge.programs.filter(isKidProgram);
     console.log("🎯 Matched by: regex-who-for-kid");
-    return { reply: programListReply(filtered), sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+    return respondWithFilteredPrograms(filtered);
   }
   if (COMPANY_ANSWER_REGEX.test(msg)) {
     const filtered = knowledge.programs.filter(isCompanyProgram);
     console.log("🎯 Matched by: regex-who-for-company");
-    return { reply: programListReply(filtered), sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+    return respondWithFilteredPrograms(filtered);
   }
   if (EXPLICIT_ADULT_REGEX.test(msg)) {
     const filtered = knowledge.programs.filter(isAdultPersonalProgram);
     console.log("🎯 Matched by: regex-who-for-explicit-adult");
-    return { reply: programListReply(filtered), sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+    return respondWithFilteredPrograms(filtered);
   }
   if (SELF_REFERENCE_REGEX.test(msg)) {
     console.log("🎯 Matched by: regex-who-for-self-reference → asking age");
@@ -424,17 +440,17 @@ function detectDirectCategoryIntent(msg, knowledge, hasSpecificProgramMatch) {
   if (KID_ANSWER_REGEX.test(msg)) {
     const filtered = knowledge.programs.filter(isKidProgram);
     console.log("🎯 Matched by: regex-direct-category-kid");
-    return { reply: programListReply(filtered), sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+    return respondWithFilteredPrograms(filtered);
   }
   if (COMPANY_ANSWER_REGEX.test(msg)) {
     const filtered = knowledge.programs.filter(isCompanyProgram);
     console.log("🎯 Matched by: regex-direct-category-company");
-    return { reply: programListReply(filtered), sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+    return respondWithFilteredPrograms(filtered);
   }
   if (EXPLICIT_ADULT_REGEX.test(msg)) {
     const filtered = knowledge.programs.filter(isAdultPersonalProgram);
     console.log("🎯 Matched by: regex-direct-category-explicit-adult");
-    return { reply: programListReply(filtered), sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+    return respondWithFilteredPrograms(filtered);
   }
   if (SELF_REFERENCE_REGEX.test(msg)) {
     console.log("🎯 Matched by: regex-direct-category-self-reference → asking age");
@@ -450,6 +466,16 @@ function detectDirectCategoryIntent(msg, knowledge, hasSpecificProgramMatch) {
 // Returns null (no match — fall through to AI) or { reply, sessionPatch }
 
 async function detectIntent(msg, knowledge, session, hasSpecificProgramMatch, detectedPrograms) {
+  // If the message names more than one program, this is comparison/reasoning
+  // territory (e.g. "X vs Y, what's the difference"). No regex or semantic
+  // branch below is equipped to answer that correctly — go straight to
+  // Gemini rather than letting any branch guess based on stale session state.
+  if (detectedPrograms && detectedPrograms.length > 1) {
+    console.log("🎯 Skipping regex/semantic — multi-program message, routing to Gemini:",
+      detectedPrograms.map((p) => p.id));
+    return null;
+  }
+
   // 1. Answers to pending clarifying questions take top priority
   const pendingField = detectPendingFieldAnswerIntent(msg, knowledge, session, detectedPrograms);
   if (pendingField) return pendingField;
