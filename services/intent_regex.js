@@ -292,7 +292,42 @@ function looksLikeGroupRequest(msg) {
     SELF_REFERENCE_REGEX.test(msg)
   );
 }
+// Reused for typo-tolerant matching — same approach as the closing-message fix.
+function levenshtein(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+  for (let i = 0; i <= a.length; i++) dp[i][0] = i;
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[a.length][b.length];
+}
 
+// Root words per audience group, checked against each token in the message
+// within edit distance 2 — catches transposition/dropped-letter typos that
+// KID_ANSWER_REGEX/COMPANY_ANSWER_REGEX/EXPLICIT_ADULT_REGEX miss outright.
+// Only used as a fallback when regex already failed (see group_request below).
+const AUDIENCE_FUZZY_ROOTS = {
+  kid: ["хүүхэд", "хүүхдэдээ", "huuhed", "huuhedde", "huhed", "huhduuded"],
+  company: ["байгууллага", "компани", "company", "corporate"],
+  adult: ["насанд", "nasand", "huregch"],
+};
+
+function fuzzyDetectAudience(msg) {
+  const tokens = msg.split(" ").filter((t) => t.length >= 4);
+  for (const [group, roots] of Object.entries(AUDIENCE_FUZZY_ROOTS)) {
+    for (const token of tokens) {
+      for (const root of roots) {
+        if (levenshtein(token, root) <= 2) return group;
+      }
+    }
+  }
+  return null;
+}
 // Answers a pending "та хэдэн настай вэ?" once age or an explicit
 // kid/adult signal comes back.
 function detectAgeClarificationAnswerIntent(msg, knowledge, session) {
@@ -524,6 +559,20 @@ async function detectIntent(msg, knowledge, session, hasSpecificProgramMatch, de
   }
 
   if (semanticIntent === "group_request") {
+     const fuzzyGroup = fuzzyDetectAudience(msg);
+
+  if (fuzzyGroup === "kid") {
+    console.log("🎯 Matched by: semantic-group_request + fuzzy-kid");
+    return respondWithFilteredPrograms(knowledge.programs.filter(isKidProgram));
+  }
+  if (fuzzyGroup === "company") {
+    console.log("🎯 Matched by: semantic-group_request + fuzzy-company");
+    return respondWithFilteredPrograms(knowledge.programs.filter(isCompanyProgram));
+  }
+  if (fuzzyGroup === "adult") {
+    console.log("🎯 Matched by: semantic-group_request + fuzzy-adult");
+    return respondWithFilteredPrograms(knowledge.programs.filter(isAdultPersonalProgram));
+  }
     // No audience was actually named/detected — converge to the exact same
     // list+ask flow as vague_request, so a misclassification between these
     // two close-margin intents is harmless instead of dropping the list.
