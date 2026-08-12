@@ -1,6 +1,7 @@
 const aiHandler = require("./ai");
 const { getKnowledge } = require("./knowledge");
 const { detectIntent } = require("./intent_regex");
+const { classifySemanticIntent } = require("./semantic");
 const {
   getSession,
   saveSession,
@@ -92,6 +93,10 @@ const CLOSING_PATTERNS = [
   /^thanks?(\syou)?$/,
 ];
 
+// Fast exact-pattern check first. Doesn't catch dropped-letter typos
+// (e.g. "bayrlla" missing a/l vs "bayarlal") — those fall through to the
+// semantic fallback in router() below rather than being patched here
+// one variant at a time.
 function isClosingMessage(normalizedMsg) {
   return CLOSING_PATTERNS.some((pattern) => pattern.test(normalizedMsg));
 }
@@ -99,8 +104,8 @@ function isClosingMessage(normalizedMsg) {
 // Compositional instead of enumerated: an optional "за"/"za" prefix plus one
 // affirmation word, so multi-token replies like "za tegi" match without
 // needing every za+word combo spelled out individually. Run through
-// collapseRepeatedLetters at the call site so doubled-letter typos
-// ("zaaa", "teegii") are tolerated the same way greetings already are.
+// collapseRepeatedLetters at the call site so doubled-letter typos are
+// tolerated the same way greetings already are.
 const AFFIRMATION_ONLY_REGEX =
   /^(за\s+|za\s+)?(тийм|тиймээ|тэгье|яахав|болно|ок|tiim|tiimee|za|bolno|ok|yes|tegi|tegii|tegiy)$/;
 
@@ -108,6 +113,36 @@ const REGISTRATION_QUESTION_MARKER = "бүртгүүлэх хүсэлтэй ба
 
 const AFFIRMATION_REPLY =
   "Танд тус болж чадсандаа баяртай байна 😊 . Утасны дугаараа бичээд илгээгээрэй, манай элсэлтийн зөвлөх тантай холбогдох болно 📞";
+
+// Shared by both the regex-closing path and the semantic-closing fallback,
+// so the two paths can never drift out of sync with each other.
+async function handleClosing(userId, session, message) {
+  if (session.phone) {
+    await clearSession(userId);
+    return {
+      reply: "Танд тус болж чадсандаа баяртай байна 😊. Танд амжилт хүсье!",
+      truncated: false,
+    };
+  }
+
+  if (!session.phoneRequested) {
+    session.phoneRequested = true;
+    session.awaitingPhoneForClose = true;
+
+    const reply = `Танд тус болж чадсандаа баяртай байна 😊 . Хэрэв манай элсэлтийн зөвлөхөөс дэлгэрэнгүй мэдээлэл авахыг хүсвэл утасны дугаараа үлдээгээрэй. Бид тантай удахгүй холбогдох болно 📞.`;
+
+    pushHistory(session, message, reply);
+    await saveSession(userId, session);
+    return { reply, truncated: false };
+  }
+
+  await clearSession(userId);
+  return {
+    reply:
+      "Танд тус болж чадсандаа баяртай байна 😊. Хэрэв AI Academy-ийн талаар дахин асуух зүйл гарвал бидэнтэй хүссэн үедээ холбогдоорой. Танд амжилт хүсье!",
+    truncated: false,
+  };
+}
 
 async function router(userId, text) {
   const message = text.trim();
@@ -166,32 +201,22 @@ async function router(userId, text) {
     await saveSession(userId, session);
     return { reply: intentResult.reply, truncated: false };
   }
-  if (isClosingMessage(msg)) {
-    if (session.phone) {
-      await clearSession(userId);
-      return {
-        reply: "Танд тус болж чадсандаа баяртай байна 😊. Танд амжилт хүсье!",
-        truncated: false,
-      };
-    }
 
-    if (!session.phoneRequested) {
-      session.phoneRequested = true;
-      session.awaitingPhoneForClose = true;
+  const normalizedClosingCheck = collapseRepeatedLetters(msg);
 
-      const reply = `Танд тус болж чадсандаа баяртай байна 😊 . Хэрэв манай элсэлтийн зөвлөхөөс дэлгэрэнгүй мэдээлэл авахыг хүсвэл утасны дугаараа үлдээгээрэй. Бид тантай удахгүй холбогдох болно 📞.`;
+  if (isClosingMessage(normalizedClosingCheck)) {
+    return await handleClosing(userId, session, message);
+  }
 
-      pushHistory(session, message, reply);
-      await saveSession(userId, session);
-      return { reply, truncated: false };
-    }
-
-    await clearSession(userId);
-    return {
-      reply:
-        "Танд тус болж чадсандаа баяртай байна 😊. Хэрэв AI Academy-ийн талаар дахин асуух зүйл гарвал бидэнтэй хүссэн үедээ холбогдоорой. Танд амжилт хүсье!",
-      truncated: false,
-    };
+  // Fallback for closing phrases the fixed regex can't catch — dropped-letter
+  // typos ("bayrlla"), casual slang, unseen phrasings. Only runs when regex
+  // already missed and detectIntent's own semantic pass already found nothing
+  // (detectIntent returned null above), so this is the last free check before
+  // the message would otherwise cost a full Gemini generation.
+  const semanticFallback = await classifySemanticIntent(msg);
+  if (semanticFallback === "closing") {
+    console.log("🎯 Matched by: semantic-closing");
+    return await handleClosing(userId, session, message);
   }
 
   if (isGreetingOnly) {

@@ -14,7 +14,7 @@ const INTENT_CONFIG = {
       "tsagiin huviar hed ve",
       "office ajlin tsag hed ve",
     ],
-    threshold: 0.75, // margin was tight (~0.07) in testing — revisit if false positives show up
+    threshold: 0.75,
   },
   location: {
     examples: [
@@ -22,7 +22,7 @@ const INTENT_CONFIG = {
       "office haana bdg ve",
       "bairshil haana",
     ],
-    threshold: 0.72, // margin was comfortable (~0.15) in testing
+    threshold: 0.72,
   },
   vague_request: {
     examples: [
@@ -33,7 +33,7 @@ const INTENT_CONFIG = {
       "мэдээлэл авъя",
       "medeelel avii",
     ],
-    threshold: 0.72, // was accidentally commented out — vague_request could never match. Restored, same margin as the others.
+    threshold: 0.72,
   },
   group_request: {
     examples: [
@@ -44,7 +44,7 @@ const INTENT_CONFIG = {
       "хүүхдэдээ сургалт хайж байна",
       "байгууллагадаа сургалт хайж байна",
     ],
-    threshold: 0.72, // margin was comfortable (~0.15) in testing
+    threshold: 0.72,
   },
   exact_request: {
     examples: [
@@ -55,10 +55,29 @@ const INTENT_CONFIG = {
       "энэ хөтөлбөрийн үнэ хэд вэ",
       "энэ сургалт хэзээ эхэлдэг вэ",
     ],
-    threshold: 0.72, // margin was comfortable (~0.15) in testing
+    threshold: 0.72,
+  },
+  // NEW — catches farewell/thanks messages the closing-pattern regex in
+  // router.js misses (typo variants, casual slang, "-с" suffix chatter etc).
+  // Only reached as a fallback after CLOSING_PATTERNS already failed to match.
+  closing: {
+    examples: [
+      "баярлалаа",
+      "их баярлалаа",
+      "за баярлалаа",
+      "bayarlalaa",
+      "bayrlla bro",
+      "thanks a lot",
+      "thank you so much",
+      "za bolloo",
+      "ойлголоо баярлалаа",
+      "за за баярлаа",
+    ],
+    threshold: 0.78, // closing phrases are short and generic-sounding, so keep this
+                      // tighter than the others to avoid false-positiving on
+                      // unrelated short replies like "za" or "ok"
   },
 };
-
 const DEFAULT_THRESHOLD = 0.72; // safety net — if a config entry ever loses its
 // threshold again (like vague_request did), fall back to this instead of
 // silently disabling that intent (undefined threshold means "score >= undefined"

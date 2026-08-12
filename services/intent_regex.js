@@ -220,7 +220,7 @@ function collapseRepeatedLetters(str) {
 }
 
 const AFFIRMATION_REGEX =
-  /^(тийм|тиймээ|тэгье|за тэгье|за|за яахав|болно|за болно|ок|tiim|tiimee|za|zaa|bolno|ok|yes|tegi|tegii|tegiy)$/i;
+ /^(за\s+|za\s+)?(тийм|тиймээ|тэгье|яахав|болно|ок|tiim|tiimee|za|bolno|ok|yes|tegi[a-z]{0,3})$/i;
 
 function isAffirmation(msg) {
   return AFFIRMATION_REGEX.test(collapseRepeatedLetters(msg.trim()));
