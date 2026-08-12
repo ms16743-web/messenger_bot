@@ -178,8 +178,6 @@ function matchFieldName(msg) {
   return null;
 }
 
-// Returns a formatted reply string, or null if no detail-word matched, or
-// null if a detail-word matched but the program has no data for it.
 function detectProgramFieldIntent(msg, program) {
   const fieldName = matchFieldName(msg);
   if (!fieldName) return null;
@@ -204,9 +202,6 @@ function formatProgramOverview(program) {
   );
 }
 
-// Every field question ends with "аль нэгийг мэдмээр байна уу?" — if the
-// customer answers with a plain "тийм/за/ok" instead of naming a field,
-// that means "yes, all of them," not "which one." Give everything.
 function formatAllFieldsReply(program) {
   const name = program.display_label || program.name;
   const lines = [`За, тэгвэл ${name} хөтөлбөрийн дэлгэрэнгүй мэдээллийг хүргэе:\n`];
@@ -231,12 +226,9 @@ function isAffirmation(msg) {
   return AFFIRMATION_REGEX.test(collapseRepeatedLetters(msg.trim()));
 }
 
-// The overview ("Үнэ, хуваарь, ... аль нэгийг мэдмээр байна уу?") sets
-// session.awaitingFieldChoice. If the very next message is a bare "yes" —
-// not a named field, not a new program — answer with everything.
 function detectFieldChoiceAffirmationIntent(msg, knowledge, session, detectedPrograms) {
   if (!session?.awaitingFieldChoice) return null;
-  if (detectedPrograms && detectedPrograms.length > 0) return null; // new program named — let that branch handle it
+  if (detectedPrograms && detectedPrograms.length > 0) return null;
   if (!isAffirmation(msg)) return null;
 
   const program =
@@ -250,15 +242,64 @@ function detectFieldChoiceAffirmationIntent(msg, knowledge, session, detectedPro
   };
 }
 
-// If the message clearly names a different audience group (kid/adult/company)
-// with no program explicitly named, don't let a stale session.selectedProgram
-// hijack it — let it fall through to the group/category branch instead.
+// --- Audience-group regexes ---
+// Split into three tiers, since age matters for which programs are safe to show:
+//   KID / COMPANY — unambiguous, safe to filter immediately
+//   EXPLICIT_ADULT — says "adult" outright, safe to filter immediately
+//   SELF_REFERENCE — "for myself" reveals nothing about age (could be a teen
+//     or an adult), so this must trigger a clarifying question, never a guess.
+const KID_ANSWER_REGEX = /(хүүхэд|хүүхдэдээ|huuhed|huuhedde|huhed|10.?18|өсвөр|kid|child)/i;
+const COMPANY_ANSWER_REGEX = /(байгууллага|компани|compand|company|corporate)/i;
+const EXPLICIT_ADULT_REGEX = /(насанд хүрэгч|nasand huregch|18\+|over 18)/i;
+const SELF_REFERENCE_REGEX = /(өөртөө|uurtuu|намайг|би өөрөө|myself|for me|adult)/i;
+const AGE_NUMBER_REGEX = /(\d{1,2})\s*(nas|настай|nastai)/i;
+
+function extractAge(msg) {
+  const match = msg.match(AGE_NUMBER_REGEX);
+  return match ? Number(match[1]) : null;
+}
+
+function programListReply(filtered) {
+  return (
+    formatProgramList(filtered) +
+    `\n\nЭдгээрээс аль хөтөлбөрийн талаар дэлгэрэнгүй мэдээлэл авахыг хүсэж байна вэ?`
+  );
+}
+
+// If the message clearly names/implies an audience (kid/company/explicit
+// adult/self-reference) don't let a stale session.selectedProgram hijack it
+// — let it fall through to the group/category branch instead.
 function looksLikeGroupRequest(msg) {
   return (
     KID_ANSWER_REGEX.test(msg) ||
     COMPANY_ANSWER_REGEX.test(msg) ||
-    ADULT_ANSWER_REGEX.test(msg)
+    EXPLICIT_ADULT_REGEX.test(msg) ||
+    SELF_REFERENCE_REGEX.test(msg)
   );
+}
+
+// Answers a pending "та хэдэн настай вэ?" once age or an explicit
+// kid/adult signal comes back.
+function detectAgeClarificationAnswerIntent(msg, knowledge, session) {
+  if (!session?.pendingAgeClarification) return null;
+
+  const age = extractAge(msg);
+  let filtered = null;
+
+  if (age !== null) {
+    filtered = age < 18
+      ? knowledge.programs.filter(isKidProgram)
+      : knowledge.programs.filter(isAdultPersonalProgram);
+  } else if (KID_ANSWER_REGEX.test(msg)) {
+    filtered = knowledge.programs.filter(isKidProgram);
+  } else if (EXPLICIT_ADULT_REGEX.test(msg)) {
+    filtered = knowledge.programs.filter(isAdultPersonalProgram);
+  } else {
+    return null; // still unclear — let AI handle it rather than guess
+  }
+
+  console.log("🎯 Matched by: regex-age-clarification-answer");
+  return { reply: programListReply(filtered), sessionPatch: { pendingAgeClarification: false } };
 }
 
 function detectExactProgramIntent(msg, knowledge, session, detectedPrograms) {
@@ -272,9 +313,6 @@ function detectExactProgramIntent(msg, knowledge, session, detectedPrograms) {
     null;
 
   if (!program) {
-    // No program named and none in context. If they clearly asked a detail
-    // question anyway ("үнэ хэд вэ?" cold), don't guess and don't burn a
-    // Gemini call — ask which program instead.
     const fieldName = matchFieldName(msg);
     if (fieldName) {
       console.log("🎯 Matched by: regex-field-no-program →", fieldName);
@@ -299,9 +337,6 @@ function detectExactProgramIntent(msg, knowledge, session, detectedPrograms) {
     };
   }
 
-  // No detail word. Only give the full overview when the program was
-  // actually named in THIS message — an unrelated follow-up shouldn't
-  // re-dump the overview just because selectedProgram is still set.
   if (!namedNow) return null;
 
   console.log("🎯 Matched by: regex-program-overview", program.id);
@@ -311,13 +346,11 @@ function detectExactProgramIntent(msg, knowledge, session, detectedPrograms) {
       selectedProgram: program.id,
       pendingWhoFor: false,
       pendingFieldQuestion: null,
-      awaitingFieldChoice: true, // the overview ends by asking "which field?" — track it
+      awaitingFieldChoice: true,
     },
   };
 }
 
-// Answers a pending "аль хөтөлбөрийн талаар асууж байна вэ?" once the user
-// names a program in their next message.
 function detectPendingFieldAnswerIntent(msg, knowledge, session, detectedPrograms) {
   if (!session?.pendingFieldQuestion) return null;
   if (!detectedPrograms || detectedPrograms.length !== 1) return null;
@@ -339,69 +372,91 @@ function detectPendingFieldAnswerIntent(msg, knowledge, session, detectedProgram
 // --- Intent: vague info request ("мэдээлэл авъя") ---
 
 const VAGUE_REQUEST_REGEX =
-  /(мэдээлэл авъя|мэдээлэл өгөөч|хөтөлбөрийн мэдээлэл|программ.*байг|сургалт.*байг|program info|tell me about|what programs|medeelel avii|medeelel uguch|hutulbriin medeel)/i;
+  /(мэдээлэл авъя|мэдээлэл өгөөч|хөтөлбөрийн мэдээлэл|программ.*байг|сургалт.*байг|program info|tell me about|what programs|medeelel avii|medeelel uguch|hutulbriin medeel|surgaltuud|sonirhii)/i;
+
+function buildVagueRequestReply(knowledge) {
+  const reply =
+    `Сайн байна уу! 😊 AI Academy-д тавтай морил. Одоогоор бүртгэл нээлттэй байгаа сургалтууд:\n\n` +
+    formatProgramList(knowledge.programs) +
+    `\n\nТа хэнд зориулж сургалт хайж байна вэ? (өөртөө / хүүхдэдээ / байгууллагадаа)`;
+  return { reply, sessionPatch: { pendingWhoFor: true, awaitingFieldChoice: false } };
+}
 
 function detectVagueRequestIntent(msg, knowledge, hasSpecificProgramMatch) {
   if (hasSpecificProgramMatch) return null;
   if (!VAGUE_REQUEST_REGEX.test(msg)) return null;
-  return buildVagueRequestReply();
-}
-
-function buildVagueRequestReply() {
-  const reply = `Сайн байна уу! 😊 AI Academy-д тавтай морил. Та ямар мэдээлэл сонирхож байна вэ?`;
-  return { reply, sessionPatch: { pendingWhoFor: true, awaitingFieldChoice: false } };
+  return buildVagueRequestReply(knowledge);
 }
 
 // --- Intent: answering "who is this for?" / group requests ---
 
-const KID_ANSWER_REGEX = /(хүүхэд|хүүхдэдээ|huuhed|huuhedde|huhed|10.?18|өсвөр|kid|child)/i;
-const COMPANY_ANSWER_REGEX = /(байгууллага|компани|compand|company|corporate)/i;
-const ADULT_ANSWER_REGEX = /(өөртөө|uurtuu|намайг|би өөрөө|adult|myself|for me|насанд хүрэгч|nasand huregch)/i;
-
 function detectWhoForAnswerIntent(msg, knowledge, session) {
   if (!session?.pendingWhoFor) return null;
 
-  let filtered = null;
-  if (KID_ANSWER_REGEX.test(msg)) filtered = knowledge.programs.filter(isKidProgram);
-  else if (COMPANY_ANSWER_REGEX.test(msg)) filtered = knowledge.programs.filter(isCompanyProgram);
-  else if (ADULT_ANSWER_REGEX.test(msg)) filtered = knowledge.programs.filter(isAdultPersonalProgram);
-
-  if (!filtered || filtered.length === 0) return null;
-
-  const reply =
-    formatProgramList(filtered) +
-    `\n\nЭдгээр хөтөлбөрүүдээс аль талаар нь илүү дэлгэрэнгүй мэдээлэл авахыг хүсэж байна вэ? 😊`;
-
-  return { reply, sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+  if (KID_ANSWER_REGEX.test(msg)) {
+    const filtered = knowledge.programs.filter(isKidProgram);
+    console.log("🎯 Matched by: regex-who-for-kid");
+    return { reply: programListReply(filtered), sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+  }
+  if (COMPANY_ANSWER_REGEX.test(msg)) {
+    const filtered = knowledge.programs.filter(isCompanyProgram);
+    console.log("🎯 Matched by: regex-who-for-company");
+    return { reply: programListReply(filtered), sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+  }
+  if (EXPLICIT_ADULT_REGEX.test(msg)) {
+    const filtered = knowledge.programs.filter(isAdultPersonalProgram);
+    console.log("🎯 Matched by: regex-who-for-explicit-adult");
+    return { reply: programListReply(filtered), sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+  }
+  if (SELF_REFERENCE_REGEX.test(msg)) {
+    console.log("🎯 Matched by: regex-who-for-self-reference → asking age");
+    return {
+      reply: "Танд тохирох хөтөлбөрийг санал болгохын тулд асуумаар байна — та хэдэн настай вэ? (10–18 насныханд зориулсан тусдаа хөтөлбөр бас бий.)",
+      sessionPatch: { pendingWhoFor: false, pendingAgeClarification: true },
+    };
+  }
+  return null;
 }
 
 function detectDirectCategoryIntent(msg, knowledge, hasSpecificProgramMatch) {
   if (hasSpecificProgramMatch) return null;
 
-  let filtered = null;
-  if (KID_ANSWER_REGEX.test(msg)) filtered = knowledge.programs.filter(isKidProgram);
-  else if (COMPANY_ANSWER_REGEX.test(msg)) filtered = knowledge.programs.filter(isCompanyProgram);
-  else if (ADULT_ANSWER_REGEX.test(msg)) filtered = knowledge.programs.filter(isAdultPersonalProgram);
-
-  if (!filtered || filtered.length === 0) return null;
-
-  const reply =
-    `Дараах хөтөлбөрүүдийн бүртгэл нээлттэй байна:\n\n` +
-    formatProgramList(filtered) +
-    `\n\nЭдгээрээс аль хөтөлбөрийн талаар дэлгэрэнгүй мэдээлэл авахыг хүсэж байна вэ?`;
-
-  return { reply, sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+  if (KID_ANSWER_REGEX.test(msg)) {
+    const filtered = knowledge.programs.filter(isKidProgram);
+    console.log("🎯 Matched by: regex-direct-category-kid");
+    return { reply: programListReply(filtered), sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+  }
+  if (COMPANY_ANSWER_REGEX.test(msg)) {
+    const filtered = knowledge.programs.filter(isCompanyProgram);
+    console.log("🎯 Matched by: regex-direct-category-company");
+    return { reply: programListReply(filtered), sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+  }
+  if (EXPLICIT_ADULT_REGEX.test(msg)) {
+    const filtered = knowledge.programs.filter(isAdultPersonalProgram);
+    console.log("🎯 Matched by: regex-direct-category-explicit-adult");
+    return { reply: programListReply(filtered), sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
+  }
+  if (SELF_REFERENCE_REGEX.test(msg)) {
+    console.log("🎯 Matched by: regex-direct-category-self-reference → asking age");
+    return {
+      reply: "Танд тохирох хөтөлбөрийг санал болгохын тулд асуумаар байна — та хэдэн настай вэ? (10–18 насныханд зориулсан тусдаа хөтөлбөр бас бий.)",
+      sessionPatch: { pendingWhoFor: false, pendingAgeClarification: true },
+    };
+  }
+  return null;
 }
 
 // --- Public entry point ---
 // Returns null (no match — fall through to AI) or { reply, sessionPatch }
 
 async function detectIntent(msg, knowledge, session, hasSpecificProgramMatch, detectedPrograms) {
-  // 1. Answer to a pending clarifying question takes top priority
+  // 1. Answers to pending clarifying questions take top priority
   const pendingField = detectPendingFieldAnswerIntent(msg, knowledge, session, detectedPrograms);
   if (pendingField) return pendingField;
 
-  // "Yes" to "which field do you want?" means "all of them," not "which."
+  const ageClarification = detectAgeClarificationAnswerIntent(msg, knowledge, session);
+  if (ageClarification) return ageClarification;
+
   const fieldChoiceAffirmation = detectFieldChoiceAffirmationIntent(msg, knowledge, session, detectedPrograms);
   if (fieldChoiceAffirmation) return fieldChoiceAffirmation;
 
@@ -416,7 +471,7 @@ async function detectIntent(msg, knowledge, session, hasSpecificProgramMatch, de
   const exactProgram = detectExactProgramIntent(msg, knowledge, session, detectedPrograms);
   if (exactProgram) return exactProgram;
 
-  // 4. group / category request (kids / adult / company), no program named
+  // 4. group / category request (kids / adult / company / self), no program named
   const directCategory = detectDirectCategoryIntent(msg, knowledge, hasSpecificProgramMatch);
   if (directCategory) return directCategory;
 
@@ -439,29 +494,20 @@ async function detectIntent(msg, knowledge, session, hasSpecificProgramMatch, de
 
   if (semanticIntent === "vague_request") {
     console.log("🎯 Matched by: semantic-vague_request");
-    return buildVagueRequestReply();
+    return buildVagueRequestReply(knowledge);
   }
 
   if (semanticIntent === "group_request") {
-    // We know the message is ABOUT an audience group, but not WHICH one —
-    // that's exactly the ambiguity the (already-failed) KID/ADULT/COMPANY
-    // regex can't resolve either, so re-running it here would be as useless
-    // as the vague_request bug above. Ask directly instead — this reuses
-    // the same pendingWhoFor flow detectWhoForAnswerIntent already handles.
-    console.log("🎯 Matched by: semantic-group_request (clarify)");
-    return {
-      reply: "Та хэнд зориулж сургалт хайж байна вэ? (өөртөө / хүүхдэдээ / байгууллагадаа)",
-      sessionPatch: { pendingWhoFor: true, awaitingFieldChoice: false },
-    };
+    // No audience was actually named/detected — converge to the exact same
+    // list+ask flow as vague_request, so a misclassification between these
+    // two close-margin intents is harmless instead of dropping the list.
+    console.log("🎯 Matched by: semantic-group_request → showing full list");
+    return buildVagueRequestReply(knowledge);
   }
 
   if (semanticIntent === "exact_request" && session?.selectedProgram) {
     const program = knowledge.programs.find((p) => p.id === session.selectedProgram);
     if (program) {
-      // Same trap as above: FIELD_PATTERNS regex already failed against this
-      // message (that's why we're in the fallback), so re-testing it here
-      // would always return null. We know it's a detail question about the
-      // program in context, just not which field — ask, same as the overview.
       console.log("🎯 Matched by: semantic-exact_request (clarify)");
       return {
         reply: `Үнэ, хуваарь, агуулга, шаардлага, сертификатын аль нэгийг дэлгэрэнгүй мэдмээр байна уу?`,
