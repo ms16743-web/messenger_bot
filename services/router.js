@@ -94,18 +94,13 @@ const CLOSING_PATTERNS = [
 ];
 
 // Fast exact-pattern check first. Doesn't catch dropped-letter typos
-// (e.g. "bayrlla" missing a/l vs "bayarlal") — those fall through to the
-// semantic fallback in router() below rather than being patched here
-// one variant at a time.
+// ("bayrlla" vs "bayarlal") — those fall through to the semantic fallback
+// in router() below instead of being patched here one variant at a time.
 function isClosingMessage(normalizedMsg) {
   return CLOSING_PATTERNS.some((pattern) => pattern.test(normalizedMsg));
 }
 
-// Compositional instead of enumerated: an optional "за"/"za" prefix plus one
-// affirmation word, so multi-token replies like "za tegi" match without
-// needing every za+word combo spelled out individually. Run through
-// collapseRepeatedLetters at the call site so doubled-letter typos are
-// tolerated the same way greetings already are.
+// Compositional instead of enumerated: optional за/za prefix + one word.
 const AFFIRMATION_ONLY_REGEX =
   /^(за\s+|za\s+)?(тийм|тиймээ|тэгье|яахав|болно|ок|tiim|tiimee|za|bolno|ok|yes|tegi|tegii|tegiy)$/;
 
@@ -115,7 +110,7 @@ const AFFIRMATION_REPLY =
   "Танд тус болж чадсандаа баяртай байна 😊 . Утасны дугаараа бичээд илгээгээрэй, манай элсэлтийн зөвлөх тантай холбогдох болно 📞";
 
 // Shared by both the regex-closing path and the semantic-closing fallback,
-// so the two paths can never drift out of sync with each other.
+// so the two can never drift out of sync with each other.
 async function handleClosing(userId, session, message) {
   if (session.phone) {
     await clearSession(userId);
@@ -177,8 +172,6 @@ async function router(userId, text) {
     return { reply, truncated: false };
   }
 
-  // Uses collapseRepeatedLetters so typo/elongation variants of "za tegi"
-  // ("za tegii", "zaaa tegi", etc.) match the same way greetings already do.
   if (
     session.awaitingRegistrationConfirmation &&
     AFFIRMATION_ONLY_REGEX.test(collapseRepeatedLetters(msg))
@@ -208,11 +201,9 @@ async function router(userId, text) {
     return await handleClosing(userId, session, message);
   }
 
-  // Fallback for closing phrases the fixed regex can't catch — dropped-letter
-  // typos ("bayrlla"), casual slang, unseen phrasings. Only runs when regex
-  // already missed and detectIntent's own semantic pass already found nothing
-  // (detectIntent returned null above), so this is the last free check before
-  // the message would otherwise cost a full Gemini generation.
+  // Fallback for closing phrases the fixed regex can't catch. Only runs when
+  // regex already missed and detectIntent's own semantic pass already found
+  // nothing (detectIntent returned null above).
   const semanticFallback = await classifySemanticIntent(msg);
   if (semanticFallback === "closing") {
     console.log("🎯 Matched by: semantic-closing");

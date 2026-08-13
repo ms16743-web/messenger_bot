@@ -4,9 +4,6 @@ const API_KEY = process.env.GEMINI_API_KEY;
 const EMBED_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent";
 
-// Example phrases per intent, validated against real customer messages
-// from production logs. Thresholds below were picked from that testing —
-// see the margin note next to each.
 const INTENT_CONFIG = {
   hours: {
     examples: [
@@ -57,9 +54,9 @@ const INTENT_CONFIG = {
     ],
     threshold: 0.72,
   },
-  // NEW — catches farewell/thanks messages the closing-pattern regex in
-  // router.js misses (typo variants, casual slang, "-с" suffix chatter etc).
-  // Only reached as a fallback after CLOSING_PATTERNS already failed to match.
+  // NEW — catches farewell/thanks messages the CLOSING_PATTERNS regex in
+  // router.js misses (typo variants, casual slang etc). Only reached as a
+  // fallback after the regex check already failed.
   closing: {
     examples: [
       "баярлалаа",
@@ -73,17 +70,14 @@ const INTENT_CONFIG = {
       "ойлголоо баярлалаа",
       "за за баярлаа",
     ],
-    threshold: 0.78, // closing phrases are short and generic-sounding, so keep this
-                      // tighter than the others to avoid false-positiving on
-                      // unrelated short replies like "za" or "ok"
+    threshold: 0.78, // tighter than others — closing phrases are short and
+                      // generic-sounding, avoid false-positiving on "za"/"ok"
   },
 };
-const DEFAULT_THRESHOLD = 0.72; // safety net — if a config entry ever loses its
-// threshold again (like vague_request did), fall back to this instead of
-// silently disabling that intent (undefined threshold means "score >= undefined"
-// which is always false, so the intent can never win).
 
-let exampleVectorCache = null; // populated once at startup, not per-request
+const DEFAULT_THRESHOLD = 0.72;
+
+let exampleVectorCache = null;
 
 async function embedText(text) {
   const controller = new AbortController();
@@ -120,8 +114,6 @@ function cosineSimilarity(a, b) {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-// Call this once at server startup — embeds all example phrases and caches
-// the vectors in memory, so runtime classification never re-embeds them.
 async function initSemanticCache() {
   if (!API_KEY) {
     console.warn("⚠️ GEMINI_API_KEY missing — semantic intent matching disabled.");
@@ -141,10 +133,8 @@ async function initSemanticCache() {
   console.log("✅ Semantic intent cache initialized:", Object.keys(cache).join(", "));
 }
 
-// Returns the matched intent name (one of the INTENT_CONFIG keys) or null.
-// Only called as a fallback when regex already found nothing — see intent_regex.js.
 async function classifySemanticIntent(msg) {
-  if (!exampleVectorCache) return null; // cache not ready — fail safe, fall through to AI
+  if (!exampleVectorCache) return null;
 
   const msgVector = await embedText(msg);
   if (!msgVector) return null;

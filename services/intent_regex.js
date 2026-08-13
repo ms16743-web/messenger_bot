@@ -72,7 +72,7 @@ function formatHoursReply(h) {
   const baseInfo = `Бид ${h.working_hours.opens}-${h.working_hours.closes} цагийн хооронд ажилладаг. Үдийн цай: ${h.lunch_break.starts}-${h.lunch_break.ends}.`;
 
   if (status === "open") {
-    return `Тийм, бид яг одоо нээлттэй байгаа! ${baseInfo}`;
+    return `Тийм, бид яг одоо нээлттэй байгаа — тавтай морил! ${baseInfo}`;
   }
   if (status === "lunch") {
     return `Одоогоор үдийн завсарлагааны цаг байна (${h.lunch_break.starts}-${h.lunch_break.ends}), тул түр хүлээгээд ирвэл илүү тохиромжтой байх болно. ${baseInfo}`;
@@ -91,8 +91,11 @@ function formatLocationAndHoursReply(knowledge) {
 
 // --- Intent: location / office hours (static facts) ---
 
+// Widened with bair\s*h[ae]n? / bair\s*haa to catch "bair han ve" / "bair haa"
+// style typos that were previously missing regex and falling to semantic,
+// where they sometimes lost the scoring race to an unrelated intent.
 const LOCATION_REGEX =
-  /(байршил|хаяг|хаана байр|хаана орш|та нар хаана|энэ хаана|bairsh|bayrsh|brshil|brshl|hayg|hayag|hayig|haan[a]?\s*bai|haana\s*bai|hana\s*bai|haanve|haan\s*bdg|hana\s*bdg|address|location|where.*(you|located)|where\s+is)/i;
+  /(байршил|хаяг|хаана байр|хаана орш|та нар хаана|энэ хаана|bairsh|bayrsh|brshil|brshl|hayg|hayag|hayig|haan[a]?\s*bai|haana\s*bai|hana\s*bai|haanve|haan\s*bdg|hana\s*bdg|address|location|where.*(you|located)|where\s+is|bair\s*h[ae]n?|bair\s*haa)/i;
 
 const HOURS_TIME_WORD = /(tsag|цаг)/i;
 const HOURS_CONTEXT_WORD =
@@ -127,6 +130,10 @@ function buildBoundaryRegex(words) {
   return new RegExp(`(?<![\\p{L}\\p{N}])(?:${escaped.join("|")})(?![\\p{L}\\p{N}])`, "iu");
 }
 
+// requirements/certificate intentionally NOT included here — no reliable
+// data behind them in the knowledge base. REMOVED_FIELD_REGEX below still
+// detects when these are asked so we can route to Gemini instead of
+// silently reshowing the program overview.
 const FIELD_PATTERNS = {
   price: {
     regex: buildBoundaryRegex(["үнэ", "төлбөр", "хэдэн төгрөг", "price", "pricing", "une", "tulbur"]),
@@ -148,19 +155,16 @@ const FIELD_PATTERNS = {
     keys: ["curriculum_summary", "skills"],
     label: "📚 Агуулга",
   },
-  requirements: {
-    regex: buildBoundaryRegex([
-      "шаардлага", "орох болзол", "requirement", "prerequisite", "урьдчилсан мэдлэг",
-    ]),
-    keys: ["prerequisites", "requirements"],
-    label: "✅ Шаардлага",
-  },
-  certificate: {
-    regex: buildBoundaryRegex(["гэрчилгээ", "сертификат", "certificate", "diploma"]),
-    keys: ["certificate"],
-    label: "🎓 Гэрчилгээ",
-  },
 };
+
+// Detects requirements/certificate questions even though we don't answer
+// them via regex — used to route straight to Gemini instead of falling
+// through to formatProgramOverview (which looked like the bot ignored
+// the question).
+const REMOVED_FIELD_REGEX = buildBoundaryRegex([
+  "шаардлага", "орох болзол", "requirement", "prerequisite", "урьдчилсан мэдлэг",
+  "гэрчилгээ", "сертификат", "certificate", "diploma",
+]);
 
 function getFirstAvailableField(program, keys) {
   for (const key of keys) {
@@ -178,6 +182,8 @@ function matchFieldName(msg) {
   return null;
 }
 
+// Reply format standardized to match formatProgramOverview's style
+// (emoji + uppercase name header) across price/schedule/curriculum.
 function detectProgramFieldIntent(msg, program) {
   const fieldName = matchFieldName(msg);
   if (!fieldName) return null;
@@ -185,10 +191,12 @@ function detectProgramFieldIntent(msg, program) {
   const config = FIELD_PATTERNS[fieldName];
   const value = getFirstAvailableField(program, config.keys);
   if (!value) return null;
-const emoji = PROGRAM_EMOJI[program.id] || "✦";
+
+  const emoji = PROGRAM_EMOJI[program.id] || "✦";
   const name = program.display_label || program.name;
+
   console.log("🎯 Matched by: regex-program-field", program.id, fieldName);
-  return `${config.label} — ${program.display_label || program.name}\n${value}`;
+  return `${emoji} ${name.toUpperCase()}\n\n${config.label}: ${value}`;
 }
 
 function formatProgramOverview(program) {
@@ -221,7 +229,7 @@ function collapseRepeatedLetters(str) {
 }
 
 const AFFIRMATION_REGEX =
- /^(за\s+|za\s+)?(тийм|тиймээ|тэгье|яахав|болно|ок|tiim|tiimee|za|bolno|ok|yes|tegi[a-z]{0,3})$/i;
+  /^(за\s+|za\s+)?(тийм|тиймээ|тэгье|яахав|болно|ок|tiim|tiimee|za|bolno|ok|yes|tegi[a-z]{0,3})$/i;
 
 function isAffirmation(msg) {
   return AFFIRMATION_REGEX.test(collapseRepeatedLetters(msg.trim()));
@@ -244,17 +252,12 @@ function detectFieldChoiceAffirmationIntent(msg, knowledge, session, detectedPro
 }
 
 // --- Audience-group regexes ---
-// Split into three tiers, since age matters for which programs are safe to show:
-//   KID / COMPANY — unambiguous, safe to filter immediately
-//   EXPLICIT_ADULT — says "adult" outright, safe to filter immediately
-//   SELF_REFERENCE — "for myself" reveals nothing about age (could be a teen
-//     or an adult), so this must trigger a clarifying question, never a guess.
 const KID_ANSWER_REGEX = /(хүүхэд|хүүхдэдээ|huuhed|huuhedde|huhed|10.?18|өсвөр|kid|child)/i;
 const COMPANY_ANSWER_REGEX = /(байгууллага|компани|compand|company|corporate)/i;
 const EXPLICIT_ADULT_REGEX = /(насанд хүрэгч|nasand huregch|18\+|over 18)/i;
-// "uurtu+" (not the fixed spelling "uurtuu") tolerates the dropped-trailing-
-// letter typo family, e.g. "uurtu" instead of "uurtuu".
-const SELF_REFERENCE_REGEX = /(өөртөө|uurtu+|намайг|би өөрөө|myself|for me|adult)/i;
+// u+rtu+ tolerates letter-order/doubling typo variants (uurtu, urtuu, uurtuu)
+// instead of one fixed spelling.
+const SELF_REFERENCE_REGEX = /(өөртөө|u+rtu+|намайг|би өөрөө|myself|for me)/i;
 const AGE_NUMBER_REGEX = /(\d{1,2})\s*(nas|настай|nastai)/i;
 
 function extractAge(msg) {
@@ -282,9 +285,6 @@ function respondWithFilteredPrograms(filtered) {
   return { reply: programListReply(filtered), sessionPatch: { pendingWhoFor: false, awaitingFieldChoice: false } };
 }
 
-// If the message clearly names/implies an audience (kid/company/explicit
-// adult/self-reference) don't let a stale session.selectedProgram hijack it
-// — let it fall through to the group/category branch instead.
 function looksLikeGroupRequest(msg) {
   return (
     KID_ANSWER_REGEX.test(msg) ||
@@ -293,7 +293,8 @@ function looksLikeGroupRequest(msg) {
     SELF_REFERENCE_REGEX.test(msg)
   );
 }
-// Reused for typo-tolerant matching — same approach as the closing-message fix.
+
+// Reused for typo-tolerant matching (audience fuzzy detection below).
 function levenshtein(a, b) {
   const dp = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
   for (let i = 0; i <= a.length; i++) dp[i][0] = i;
@@ -309,9 +310,8 @@ function levenshtein(a, b) {
 }
 
 // Root words per audience group, checked against each token in the message
-// within edit distance 2 — catches transposition/dropped-letter typos that
-// KID_ANSWER_REGEX/COMPANY_ANSWER_REGEX/EXPLICIT_ADULT_REGEX miss outright.
-// Only used as a fallback when regex already failed (see group_request below).
+// within edit distance 2 — catches typos KID_ANSWER_REGEX etc. miss outright.
+// Only used as a fallback inside the semantic group_request branch.
 const AUDIENCE_FUZZY_ROOTS = {
   kid: ["хүүхэд", "хүүхдэдээ", "huuhed", "huuhedde", "huhed", "huhduuded"],
   company: ["байгууллага", "компани", "company", "corporate"],
@@ -329,8 +329,7 @@ function fuzzyDetectAudience(msg) {
   }
   return null;
 }
-// Answers a pending "та хэдэн настай вэ?" once age or an explicit
-// kid/adult signal comes back.
+
 function detectAgeClarificationAnswerIntent(msg, knowledge, session) {
   if (!session?.pendingAgeClarification) return null;
 
@@ -346,7 +345,7 @@ function detectAgeClarificationAnswerIntent(msg, knowledge, session) {
   } else if (EXPLICIT_ADULT_REGEX.test(msg)) {
     filtered = knowledge.programs.filter(isAdultPersonalProgram);
   } else {
-    return null; // still unclear — let AI handle it rather than guess
+    return null;
   }
 
   console.log("🎯 Matched by: regex-age-clarification-answer");
@@ -373,31 +372,17 @@ function detectExactProgramIntent(msg, knowledge, session, detectedPrograms) {
         sessionPatch: { pendingFieldQuestion: fieldName },
       };
     }
+    if (REMOVED_FIELD_REGEX.test(msg)) {
+      console.log("🎯 Skipping regex — requirements/certificate question, no program in context, routing to Gemini");
+      return null;
+    }
     return null;
   }
 
-  const fieldName = matchFieldName(msg);
-  if (fieldName) {
-    const fieldReply = detectProgramFieldIntent(msg, program);
-    if (fieldReply) {
-      return {
-        reply: fieldReply,
-        sessionPatch: {
-          selectedProgram: program.id,
-          pendingWhoFor: false,
-          pendingFieldQuestion: null,
-          awaitingFieldChoice: false,
-        },
-      };
-    }
-
-    // Field was recognized, but the knowledge base has no value for it —
-    // say so explicitly instead of silently falling through to the overview,
-    // which made it look like the bot ignored the question.
-    console.log("🎯 Matched by: regex-program-field-missing-data", program.id, fieldName);
-    const config = FIELD_PATTERNS[fieldName];
+  const fieldReply = detectProgramFieldIntent(msg, program);
+  if (fieldReply) {
     return {
-      reply: `Уучлаарай, "${program.display_label || program.name}" хөтөлбөрийн ${config.label.replace(/^\S+\s/, "")}-ийн мэдээлэл одоогоор бэлэн биш байна. Дэлгэрэнгүй мэдээлэл авахыг хүсвэл утасны дугаараа үлдээгээрэй, манай зөвлөх тантай холбогдох болно 📞`,
+      reply: fieldReply,
       sessionPatch: {
         selectedProgram: program.id,
         pendingWhoFor: false,
@@ -405,6 +390,13 @@ function detectExactProgramIntent(msg, knowledge, session, detectedPrograms) {
         awaitingFieldChoice: false,
       },
     };
+  }
+
+  // Asked specifically about requirements/certificate — no regex data for
+  // these by design. Don't reshow the overview; let Gemini answer instead.
+  if (REMOVED_FIELD_REGEX.test(msg)) {
+    console.log("🎯 Skipping regex — requirements/certificate question, routing to Gemini:", program.id);
+    return null;
   }
 
   if (!namedNow) return null;
@@ -421,6 +413,7 @@ function detectExactProgramIntent(msg, knowledge, session, detectedPrograms) {
   };
 }
 
+// Reply format standardized to match the field-question format used elsewhere.
 function detectPendingFieldAnswerIntent(msg, knowledge, session, detectedPrograms) {
   if (!session?.pendingFieldQuestion) return null;
   if (!detectedPrograms || detectedPrograms.length !== 1) return null;
@@ -432,9 +425,12 @@ function detectPendingFieldAnswerIntent(msg, knowledge, session, detectedProgram
   const value = getFirstAvailableField(program, config.keys);
   if (!value) return null;
 
+  const emoji = PROGRAM_EMOJI[program.id] || "✦";
+  const name = program.display_label || program.name;
+
   console.log("🎯 Matched by: regex-pending-field-answer", program.id, session.pendingFieldQuestion);
   return {
-    reply: `${config.label} — ${program.display_label || program.name}\n${value}`,
+    reply: `${emoji} ${name.toUpperCase()}\n\n${config.label}: ${value}`,
     sessionPatch: { selectedProgram: program.id, pendingFieldQuestion: null },
   };
 }
@@ -520,21 +516,22 @@ function detectDirectCategoryIntent(msg, knowledge, hasSpecificProgramMatch) {
 // Returns null (no match — fall through to AI) or { reply, sessionPatch }
 
 async function detectIntent(msg, knowledge, session, hasSpecificProgramMatch, detectedPrograms) {
-  // If the message names more than one program, this is comparison/reasoning
-  // territory (e.g. "X vs Y, what's the difference"). No regex or semantic
-  // branch below is equipped to answer that correctly — go straight to
-  // Gemini rather than letting any branch guess based on stale session state.
-   if (!knowledge?.programs || knowledge.programs.length === 0) {
+  // Knowledge base failed to load (DB timeout etc). Don't let downstream
+  // branches run on an empty programs array and produce broken replies —
+  // bail to Gemini. (Also hardened in knowledge.js itself.)
+  if (!knowledge?.programs || knowledge.programs.length === 0) {
     console.log("🎯 Skipping regex/semantic — knowledge base unavailable, routing to Gemini");
     return null;
   }
+
+  // Multiple programs named in one message = comparison/reasoning territory.
+  // No regex or semantic branch should touch this — send straight to Gemini.
   if (detectedPrograms && detectedPrograms.length > 1) {
     console.log("🎯 Skipping regex/semantic — multi-program message, routing to Gemini:",
       detectedPrograms.map((p) => p.id));
     return null;
   }
 
-  // 1. Answers to pending clarifying questions take top priority
   const pendingField = detectPendingFieldAnswerIntent(msg, knowledge, session, detectedPrograms);
   if (pendingField) return pendingField;
 
@@ -547,23 +544,18 @@ async function detectIntent(msg, knowledge, session, hasSpecificProgramMatch, de
   const whoForAnswer = detectWhoForAnswerIntent(msg, knowledge, session);
   if (whoForAnswer) return whoForAnswer;
 
-  // 2. location / hours — static facts
   const staticFact = detectStaticFactIntent(msg, knowledge);
   if (staticFact) return { reply: staticFact, sessionPatch: {} };
 
-  // 3. exact program (named now, or carried over) ± detail field
   const exactProgram = detectExactProgramIntent(msg, knowledge, session, detectedPrograms);
   if (exactProgram) return exactProgram;
 
-  // 4. group / category request (kids / adult / company / self), no program named
   const directCategory = detectDirectCategoryIntent(msg, knowledge, hasSpecificProgramMatch);
   if (directCategory) return directCategory;
 
-  // 5. vague "give me info" request
   const vagueRequest = detectVagueRequestIntent(msg, knowledge, hasSpecificProgramMatch);
   if (vagueRequest) return vagueRequest;
 
-  // Nothing matched by regex — try semantic matching as a fallback.
   const semanticIntent = await classifySemanticIntent(msg);
 
   if (semanticIntent === "location") {
@@ -582,23 +574,21 @@ async function detectIntent(msg, knowledge, session, hasSpecificProgramMatch, de
   }
 
   if (semanticIntent === "group_request") {
-     const fuzzyGroup = fuzzyDetectAudience(msg);
+    const fuzzyGroup = fuzzyDetectAudience(msg);
 
-  if (fuzzyGroup === "kid") {
-    console.log("🎯 Matched by: semantic-group_request + fuzzy-kid");
-    return respondWithFilteredPrograms(knowledge.programs.filter(isKidProgram));
-  }
-  if (fuzzyGroup === "company") {
-    console.log("🎯 Matched by: semantic-group_request + fuzzy-company");
-    return respondWithFilteredPrograms(knowledge.programs.filter(isCompanyProgram));
-  }
-  if (fuzzyGroup === "adult") {
-    console.log("🎯 Matched by: semantic-group_request + fuzzy-adult");
-    return respondWithFilteredPrograms(knowledge.programs.filter(isAdultPersonalProgram));
-  }
-    // No audience was actually named/detected — converge to the exact same
-    // list+ask flow as vague_request, so a misclassification between these
-    // two close-margin intents is harmless instead of dropping the list.
+    if (fuzzyGroup === "kid") {
+      console.log("🎯 Matched by: semantic-group_request + fuzzy-kid");
+      return respondWithFilteredPrograms(knowledge.programs.filter(isKidProgram));
+    }
+    if (fuzzyGroup === "company") {
+      console.log("🎯 Matched by: semantic-group_request + fuzzy-company");
+      return respondWithFilteredPrograms(knowledge.programs.filter(isCompanyProgram));
+    }
+    if (fuzzyGroup === "adult") {
+      console.log("🎯 Matched by: semantic-group_request + fuzzy-adult");
+      return respondWithFilteredPrograms(knowledge.programs.filter(isAdultPersonalProgram));
+    }
+
     console.log("🎯 Matched by: semantic-group_request → showing full list");
     return buildVagueRequestReply(knowledge);
   }
