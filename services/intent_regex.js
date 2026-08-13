@@ -32,8 +32,12 @@ function isKidProgram(program) {
 function isCompanyProgram(program) {
   return (program.category || "").includes("байгууллага");
 }
-function isAdultPersonalProgram(program) {
-  return (program.category || "").includes("Насанд хүрэгч") && !isCompanyProgram(program);
+// CHANGED: "adult" now means "not the 10-18 kid bootcamp" — includes
+// Corporate. Someone asking "for myself" (өөртөө) may still want the
+// corporate leadership program as an individual professional; the old
+// definition (adult-but-not-company) was too narrow and excluded it.
+function isAdultProgram(program) {
+  return !isKidProgram(program);
 }
 
 // --- Live office-hours calculation (Ulaanbaatar time, not server time) ---
@@ -91,11 +95,23 @@ function formatLocationAndHoursReply(knowledge) {
 
 // --- Intent: location / office hours (static facts) ---
 
-// Widened with bair\s*h[ae]n? / bair\s*haa to catch "bair han ve" / "bair haa"
-// style typos that were previously missing regex and falling to semantic,
-// where they sometimes lost the scoring race to an unrelated intent.
 const LOCATION_REGEX =
-  /(байршил|хаяг|хаана байр|хаана орш|та нар хаана|энэ хаана|bairsh|bayrsh|brshil|brshl|hayg|hayag|hayig|haan[a]?\s*bai|haana\s*bai|hana\s*bai|haanve|haan\s*bdg|hana\s*bdg|address|location|where.*(you|located)|where\s+is|bair\s*h[ae]n?|bair\s*haa)/i;
+  /(байршил|хаяг|хаана байр|хаана орш|та нар хаана|энэ хаана|bairsh|bayrsh|brshil|brshl|hayg|hayag|hayig|haan[a]?\s*bai|haana\s*bai|hana\s*bai|haanve|haan\s*bdg|hana\s*bdg|address|location|where.*(you|located)|where\s+is)/i;
+
+// CHANGED: fixed-phrase LOCATION_REGEX above needs exact wording and keeps
+// missing typo'd variants ("hn we" instead of "haana ve" — no vowel between
+// h/n, so even the widened inline pattern from before couldn't catch it).
+// Dual-check instead: a "place" word AND a "where" word present ANYWHERE in
+// the message — same proven pattern as isHoursQuestion below. Far more
+// typo-tolerant than growing one long fixed-phrase list forever, and safely
+// scoped since it requires BOTH words together, not just one generic word.
+const LOCATION_PLACE_WORD =
+  /(байршил|хаяг|байр|bair|bairsh|bayrsh|brshil|brshl|hayg|hayag|hayig|address|location|салбар|salbar|office|оффис)/i;
+const LOCATION_WHERE_WORD = /(хаана|haan|hana|han\s*(ve|we)|hn\s*(ve|we)|where)/i;
+
+function isLocationQuestion(msg) {
+  return LOCATION_PLACE_WORD.test(msg) && LOCATION_WHERE_WORD.test(msg);
+}
 
 const HOURS_TIME_WORD = /(tsag|цаг)/i;
 const HOURS_CONTEXT_WORD =
@@ -106,7 +122,7 @@ function isHoursQuestion(msg) {
 }
 
 function detectStaticFactIntent(msg, knowledge) {
-  if (LOCATION_REGEX.test(msg)) {
+  if (LOCATION_REGEX.test(msg) || isLocationQuestion(msg)) {
     console.log("🎯 Matched by: regex-location");
     return formatLocationAndHoursReply(knowledge);
   }
@@ -339,11 +355,11 @@ function detectAgeClarificationAnswerIntent(msg, knowledge, session) {
   if (age !== null) {
     filtered = age < 18
       ? knowledge.programs.filter(isKidProgram)
-      : knowledge.programs.filter(isAdultPersonalProgram);
+      : knowledge.programs.filter(isAdultProgram);
   } else if (KID_ANSWER_REGEX.test(msg)) {
     filtered = knowledge.programs.filter(isKidProgram);
   } else if (EXPLICIT_ADULT_REGEX.test(msg)) {
-    filtered = knowledge.programs.filter(isAdultPersonalProgram);
+    filtered = knowledge.programs.filter(isAdultProgram);
   } else {
     return null;
   }
@@ -470,7 +486,7 @@ function detectWhoForAnswerIntent(msg, knowledge, session) {
     return respondWithFilteredPrograms(filtered);
   }
   if (EXPLICIT_ADULT_REGEX.test(msg)) {
-    const filtered = knowledge.programs.filter(isAdultPersonalProgram);
+    const filtered = knowledge.programs.filter(isAdultProgram);
     console.log("🎯 Matched by: regex-who-for-explicit-adult");
     return respondWithFilteredPrograms(filtered);
   }
@@ -498,7 +514,7 @@ function detectDirectCategoryIntent(msg, knowledge, hasSpecificProgramMatch) {
     return respondWithFilteredPrograms(filtered);
   }
   if (EXPLICIT_ADULT_REGEX.test(msg)) {
-    const filtered = knowledge.programs.filter(isAdultPersonalProgram);
+    const filtered = knowledge.programs.filter(isAdultProgram);
     console.log("🎯 Matched by: regex-direct-category-explicit-adult");
     return respondWithFilteredPrograms(filtered);
   }
@@ -586,7 +602,7 @@ async function detectIntent(msg, knowledge, session, hasSpecificProgramMatch, de
     }
     if (fuzzyGroup === "adult") {
       console.log("🎯 Matched by: semantic-group_request + fuzzy-adult");
-      return respondWithFilteredPrograms(knowledge.programs.filter(isAdultPersonalProgram));
+      return respondWithFilteredPrograms(knowledge.programs.filter(isAdultProgram));
     }
 
     console.log("🎯 Matched by: semantic-group_request → showing full list");
