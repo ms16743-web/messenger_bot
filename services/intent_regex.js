@@ -290,7 +290,16 @@ function programListReply(filtered) {
 
 // If there's only one program in the filtered set, there's nothing to choose
 // between — go straight to its overview instead of asking "which one?" again.
+// If the filter matched NOTHING, don't send a broken empty-list reply —
+// return null so it falls through to vague/semantic/Gemini instead. An empty
+// result here almost always means the category string in the knowledge base
+// doesn't match what isKidProgram/isCompanyProgram/isAdultProgram expect
+// (wording or casing mismatch) — the warning below is meant to surface that.
 function respondWithFilteredPrograms(filtered) {
+  if (!filtered || filtered.length === 0) {
+    console.warn("⚠️ Audience filter matched 0 programs — check category strings in the knowledge base.");
+    return null;
+  }
   if (filtered.length === 1) {
     const program = filtered[0];
     return {
