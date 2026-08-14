@@ -18,8 +18,7 @@ const PROGRAM_EMOJI = {
 function formatProgramLine(program) {
   const emoji = PROGRAM_EMOJI[program.id] || "✦";
   const name = program.display_label || program.name;
-  const tagline = program.tagline || program.category;
-  return `${emoji} ${name.toUpperCase()} (${formatDuration(program)}) | ${formatFormat(program)} | ${tagline}`;
+  return `${emoji} ${name.toUpperCase()} (${formatDuration(program)})`;
 }
 
 function formatProgramList(programs) {
@@ -219,17 +218,18 @@ function formatProgramOverview(program) {
   const emoji = PROGRAM_EMOJI[program.id] || "✦";
   const name = program.display_label || program.name;
   return (
+    `Сайн байна уу! 😊\n\n` +
     `${emoji} ${name.toUpperCase()}\n\n` +
     `⏱️ Хугацаа: ${program.duration || "Мэдээлэл байхгүй"}\n` +
     `💻 Формат: ${program.format || "Мэдээлэл байхгүй"}\n\n` +
     `${program.description || ""}\n\n` +
-    `Үнэ, хуваарь, агуулга, шаардлага, сертификатын аль нэгийг дэлгэрэнгүй мэдмээр байна уу?`
+    `Та үнэ, хуваарь эсвэл бүртгэлийн талаар дэлгэрүүлж мэдмээр байна уу?`
   );
 }
 
 function formatAllFieldsReply(program) {
   const name = program.display_label || program.name;
-  const lines = [`За, тэгвэл ${name} хөтөлбөрийн дэлгэрэнгүй мэдээллийг хүргэе:\n`];
+  const lines = [`${name} хөтөлбөрийн дэлгэрэнгүй мэдээллийг хүргэе:\n`];
 
   for (const config of Object.values(FIELD_PATTERNS)) {
     const value = getFirstAvailableField(program, config.keys);
@@ -502,7 +502,7 @@ function detectWhoForAnswerIntent(msg, knowledge, session) {
   if (SELF_REFERENCE_REGEX.test(msg)) {
     console.log("🎯 Matched by: regex-who-for-self-reference → asking age");
     return {
-      reply: "Танд тохирох хөтөлбөрийг санал болгохын тулд асуумаар байна — та хэдэн настай вэ? (10–18 насныханд зориулсан тусдаа хөтөлбөр бас бий.)",
+      reply: "Таны нас хэд вэ? Эсвэл хэдэн насны хүнд сургалт хайж байгаагаа хэлж өгнө үү. ",
       sessionPatch: { pendingWhoFor: false, pendingAgeClarification: true },
     };
   }
@@ -530,7 +530,7 @@ function detectDirectCategoryIntent(msg, knowledge, hasSpecificProgramMatch) {
   if (SELF_REFERENCE_REGEX.test(msg)) {
     console.log("🎯 Matched by: regex-direct-category-self-reference → asking age");
     return {
-      reply: "Танд тохирох хөтөлбөрийг санал болгохын тулд асуумаар байна — та хэдэн настай вэ? (10–18 насныханд зориулсан тусдаа хөтөлбөр бас бий.)",
+      reply: "Таны нас хэд вэ? Эсвэл хэдэн насны хүнд сургалт хайж байгаагаа хэлж өгнө үү. ",
       sessionPatch: { pendingWhoFor: false, pendingAgeClarification: true },
     };
   }
@@ -623,7 +623,7 @@ async function detectIntent(msg, knowledge, session, hasSpecificProgramMatch, de
     if (program) {
       console.log("🎯 Matched by: semantic-exact_request (clarify)");
       return {
-        reply: `Үнэ, хуваарь, агуулга, шаардлага, сертификатын аль нэгийг дэлгэрэнгүй мэдмээр байна уу?`,
+        reply: `Үнэ, хуваарь, агуулга, шаардлага, сертификатын талаар дэлгэрэнгүй мэдмээр байна уу?`,
         sessionPatch: { awaitingFieldChoice: true },
       };
     }
