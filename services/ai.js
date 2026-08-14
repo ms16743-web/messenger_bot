@@ -404,17 +404,3 @@ console.log(
   }
 }
 module.exports = aiHandler;
-    
-    reply = sanitizeReply(reply, contactPhone);
-    return { text: reply, truncated };
-  } catch (error) {
-    console.error("❌ Gemini request failed:", error.message);
-    return {
-      text:
-        knowledge.fallback ||
-        "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай.",
-      truncated: false,
-    };
-  }
-}
-module.exports = aiHandler;
