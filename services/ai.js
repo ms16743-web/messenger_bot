@@ -140,6 +140,7 @@ function buildSystemPrompt(knowledge, session) {
 - Emoji-г маш хэмнэлттэй, зөвхөн тодорхой зүйлтэй холбоотой үед л ашигла: 📍 зөвхөн байршил, 📞 зөвхөн утас/холбогдох мэдээлэл дурдах үед. Инээмсэглэсэн царайтай emoji (😊 гэх мэт)-ийг ЗӨВХӨН мэндчилгээнд, мессеж бүрт нэгээс ихгүй удаа ашигла.
 - Нэг баримт (жишээ нь зөвхөн үнэ) асуувал энгийн нэг өгүүлбэрээр хариул, emoji, тэмдэг шаардлагагүй.
 - Ердийн ярианы хариулт (асуулт тодруулах, товч хариулт гэх мэт) энгийн өгүүлбэр хэвээр байж болно.
+- Хөтөлбөрийг жагсаалт байдлаар харуулах үед НЭР болон ХУГАЦААГ л харуул — "| [Формат] | [тайлбар]" гэсэн нэмэлт хэсгүүдийг бүү нэм. Загвар: "${'${emoji}'} ${'${НЭР бүхэлдээ том үсгээр}'} (${'${duration}'})" — доорх бүх жишээнд энэ маягийг ашигла.
 
 
 БҮРТГЭЛИЙН ЯРИАНЫ ДҮРЭМ:
@@ -164,31 +165,34 @@ function buildSystemPrompt(knowledge, session) {
 Сайн байна уу! 😊 AI Academy-д тавтай морил. 
 Одоогоор бүртгэл нь нээлттэй байгаа сургалтууд: 
 
-💻 AI 101 ONLINE ([JSON-ийн duration]) | [JSON-ийн format] | Насанд хүрэгчдэд.
-💼 CORPORATE LEADERS AI ([JSON-ийн duration]) | [JSON-ийн format] | Удирдлагуудад зориулсан AI стратеги.
-🚀 JUNIOR AI ENGINEER ([JSON-ийн duration]) | [JSON-ийн format] | 10–18 насныханд.
-⚡ AI ENGINEER ([JSON-ийн duration]) | [JSON-ийн format] | Мэргэжлийн AI Инженер бэлтгэх хөтөлбөр.
+💻 AI 101 ONLINE ([JSON-ийн duration])
+💼 CORPORATE LEADERS AI ([JSON-ийн duration])
+🚀 JUNIOR AI ENGINEER ([JSON-ийн duration])
+⚡ AI ENGINEER ([JSON-ийн duration])
+
+Та хэнд зориулж сургалт хайж байна вэ? (өөртөө / хүүхдэдээ / байгууллагадаа)
+
 
 Хэрэглэгч: Насанд хүрэгчдэд ямар сургалт байгаа вэ?
 Зөв хариулт:
 Насанд хүрэгчдэд зориулсан сургалтууд:
 
-💻 AI 101 ONLINE ([JSON-ийн duration]) | [JSON-ийн format] | Насанд хүрэгчдэд.
-💼 CORPORATE LEADERS AI ([JSON-ийн duration]) | [JSON-ийн format] | Удирдлагуудад зориулсан AI стратеги.
-⚡ AI ENGINEER ([JSON-ийн duration]) | [JSON-ийн format] | Мэргэжлийн AI Инженер бэлтгэх хөтөлбөр.
+💻 AI 101 ONLINE ([JSON-ийн duration])
+💼 CORPORATE LEADERS AI ([JSON-ийн duration])
+⚡ AI ENGINEER ([JSON-ийн duration])
 
-Эдгээр хөтөлбөрүүдээс аль талаар нь илүү дэлгэрэнгүй мэдээлэл авахыг хүсэж байна вэ? 😊
+Эдгээрээс аль хөтөлбөрийн талаар дэлгэрэнгүй мэдээлэл авахыг хүсэж байна вэ?
+
 
 Хэрэглэгч: sain bnu hutulbriin medeelel aviiya
 Зөв хариулт: Сайн байна уу! 😊 AI Academy-д тавтай морил. 
 Одоогоор бүртгэл нь нээлттэй байгаа сургалтууд: 
 
-💻 AI 101 ONLINE ([JSON-ийн duration]) | [JSON-ийн format] | Насанд хүрэгчдэд.
-💼 CORPORATE LEADERS AI ([JSON-ийн duration]) | [JSON-ийн format] | Удирдлагуудад зориулсан AI стратеги.
-🚀 JUNIOR AI ENGINEER ([JSON-ийн duration]) | [JSON-ийн format] | 10–18 насныханд.
-⚡ AI ENGINEER ([JSON-ийн duration]) | [JSON-ийн format] | Мэргэжлийн AI Инженер бэлтгэх хөтөлбөр.
+💻 AI 101 ONLINE ([JSON-ийн duration])
+💼 CORPORATE LEADERS AI ([JSON-ийн duration])
+⚡ AI ENGINEER ([JSON-ийн duration])
 
-Та хэнд зориулж сургалт хайж байна вэ? 😊 
+Та хэнд зориулж сургалт хайж байна вэ? (өөртөө / хүүхдэдээ / байгууллагадаа)
 
 
 Хэрэглэгч: Junior сургалтын үнэ болон эхлэх хугацааг хэлээч.
@@ -197,8 +201,9 @@ function buildSystemPrompt(knowledge, session) {
 
 Хэрэглэгч: Junior
 Зөв хариулт:
-⚡ Junior AI Engineer нь [JSON-д заасан насны бүлэг бүр]-д зориулсан [JSON-оос] хугацаатай танхимын хөтөлбөр
-⤷ Scratch болон no-code хэрэгслүүд ашиглан сурагчид өөрсдийн AI төслийг бүтээж сурна
+🚀 JUNIOR AI ENGINEER ([JSON-ийн duration])
+
+[JSON-ийн description]
 
 Та үнэ, хуваарь эсвэл бүртгэлийн талаар дэлгэрүүлж мэдмээр байна уу?
 
@@ -213,10 +218,9 @@ function buildSystemPrompt(knowledge, session) {
 
 Хэрэглэгч: AI Engineer хөтөлбөрийн талаар дэлгэрэнгүй хэлээч
 Зөв хариулт:
-⚡ AI ENGINEER ([JSON-ийн duration]) | [JSON-ийн format] | Мэргэжлийн AI Инженер бэлтгэх хөтөлбөр.
-⤷ Суралцагчид өөрийн AI төслийг эхнээс нь бүрэн хэрэгжүүлж, бодит туршлага хуримтлуулна
+⚡ AI ENGINEER ([JSON-ийн duration])
 
-Эхлэх огноо: [JSON-оос]
+[JSON-ийн description]
 
 Та энэ хөтөлбөрт бүртгүүлэх хүсэлтэй байна уу?
 
@@ -234,22 +238,23 @@ function buildSystemPrompt(knowledge, session) {
 Сайн байна уу! 😊 AI Academy-д тавтай морил. 
 Одоогоор бүртгэл нь нээлттэй байгаа сургалтууд: 
 
-💻 AI 101 ONLINE ([JSON-ийн duration]) | [JSON-ийн format] | Насанд хүрэгчдэд
-💼 CORPORATE LEADERS AI ([JSON-ийн duration]) | [JSON-ийн format] | Удирдлагуудад зориулсан AI стратеги.
-🚀 JUNIOR AI ENGINEER ([JSON-ийн duration]) | [JSON-ийн format] | 10–18 насныханд.
-⚡ AI ENGINEER ([JSON-ийн duration]) | [JSON-ийн format] | Мэргэжлийн AI Инженер бэлтгэх хөтөлбөр.
+💻 AI 101 ONLINE ([JSON-ийн duration])
+💼 CORPORATE LEADERS AI ([JSON-ийн duration])
+🚀 JUNIOR AI ENGINEER ([JSON-ийн duration])
+⚡ AI ENGINEER ([JSON-ийн duration])
 
-Та хэнд зориулж сургалт хайж байна вэ? 😊 
+Та хэнд зориулж сургалт хайж байна вэ? (өөртөө / хүүхдэдээ / байгууллагадаа)
 
 Хэрэглэгч: Насанд хүрэгчдэд зориулсан дараах хөтөлбөрүүд байгаа юу?
 Зөв хариулт:
-Сайн байна уу! 😊 AI Academy-д тавтай морил. 
+Сайн байна уу! 😊 AI Academy-д тавтай морил.
 Одоогоор насанд хүрэгчдэд зориулсан дараах хөтөлбөрүүдийн бүртгэл нь нээлттэй байна:
-💻 AI 101 ONLINE ([JSON-ийн duration]) | [JSON-ийн format] | Насанд хүрэгчдэд.
-⚡ AI ENGINEER ([JSON-ийн duration]) | [JSON-ийн format] | Мэргэжлийн AI Инженер бэлтгэх хөтөлбөр.
-💼 CORPORATE LEADERS AI ([JSON-ийн duration]) | [JSON-ийн format] | Удирдлагуудад зориулсан AI стратеги.
 
-Эдгээр хөтөлбөрүүдээс аль талаар нь илүү дэлгэрэнгүй мэдээлэл авахыг хүсэж байна вэ? 😊
+💻 AI 101 ONLINE ([JSON-ийн duration])
+⚡ AI ENGINEER ([JSON-ийн duration])
+💼 CORPORATE LEADERS AI ([JSON-ийн duration])
+
+Эдгээр хөтөлбөрүүдээс аль талаар нь илүү дэлгэрэнгүй мэдээлэл авахыг хүсэж байна вэ?
 
 
 Хэрэглэгч: Мэдээлэл авъя
@@ -385,6 +390,20 @@ console.log(
         truncated: false,
       };
     }
+    
+    reply = sanitizeReply(reply, contactPhone);
+    return { text: reply, truncated };
+  } catch (error) {
+    console.error("❌ Gemini request failed:", error.message);
+    return {
+      text:
+        knowledge.fallback ||
+        "Уучлаарай, одоогоор хариулт боловсруулах боломжгүй байна. Дэлгэрэнгүй мэдээллийг +976 75051055 дугаараас аваарай.",
+      truncated: false,
+    };
+  }
+}
+module.exports = aiHandler;
     
     reply = sanitizeReply(reply, contactPhone);
     return { text: reply, truncated };
